@@ -51,6 +51,10 @@ class ContinuousCaptureActivity : AppCompatActivity() {
     private var barcodeBuffer = StringBuilder()
     private var blinkingAnimator: ObjectAnimator? = null
 
+    // Variables for video splitting logic
+    private var pendingFilename: String? = null
+    private var shouldRestartRecording = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_continuous_capture)
@@ -73,7 +77,7 @@ class ContinuousCaptureActivity : AppCompatActivity() {
         }
 
         btnTestApi.setOnClickListener {
-            sendBarcode("Test")
+            processScan("Test")
         }
 
         if (allPermissionsGranted()) {
@@ -169,15 +173,33 @@ class ContinuousCaptureActivity : AppCompatActivity() {
                     }
                     is VideoRecordEvent.Finalize -> {
                         chronometer.stop()
-                        // Immediate reset requested
                         chronometer.base = SystemClock.elapsedRealtime()
                         tvStatus.text = "Ready"
                         btnCapture.text = "Start Recording"
                         startBlinking()
                         
                         if (!recordEvent.hasError()) {
-                            val msg = "Video saved: ${recordEvent.outputResults.outputUri}"
-                            Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                            val outputUri = recordEvent.outputResults.outputUri
+                            val msg = "Video saved: $outputUri"
+                            
+                            // Rename file if a pending filename exists
+                            if (pendingFilename != null) {
+                                try {
+                                    val values = ContentValues().apply {
+                                        put(MediaStore.MediaColumns.DISPLAY_NAME, pendingFilename)
+                                    }
+                                    contentResolver.update(outputUri, values, null, null)
+                                    val renameMsg = "Saved as $pendingFilename"
+                                    Toast.makeText(baseContext, renameMsg, Toast.LENGTH_SHORT).show()
+                                    Log.d(TAG, renameMsg)
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Failed to rename video", e)
+                                    Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                                }
+                                pendingFilename = null
+                            } else {
+                                Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                            }
                             Log.d(TAG, msg)
                         } else {
                             recording?.close()
@@ -185,6 +207,12 @@ class ContinuousCaptureActivity : AppCompatActivity() {
                             Log.e(TAG, "Video capture ends with error: ${recordEvent.error}")
                         }
                         recording = null
+
+                        // Automatically restart if requested (triggered by scan)
+                        if (shouldRestartRecording) {
+                            shouldRestartRecording = false
+                            startRecording()
+                        }
                     }
                 }
             }
@@ -196,7 +224,7 @@ class ContinuousCaptureActivity : AppCompatActivity() {
             if (event.keyCode == KeyEvent.KEYCODE_ENTER) {
                 val scannedCode = barcodeBuffer.toString().trim()
                 if (scannedCode.isNotEmpty()) {
-                    sendBarcode(scannedCode)
+                    processScan(scannedCode)
                 }
                 barcodeBuffer.clear()
                 return true
@@ -207,6 +235,19 @@ class ContinuousCaptureActivity : AppCompatActivity() {
             }
         }
         return super.dispatchKeyEvent(event)
+    }
+
+    private fun processScan(code: String) {
+        // 1. Send to API
+        sendBarcode(code)
+
+        // 2. If recording, stop current video, queue rename, and set flag to restart
+        if (recording != null) {
+            pendingFilename = "$code.mp4"
+            shouldRestartRecording = true
+            recording?.stop()
+            recording = null
+        }
     }
 
     private fun sendBarcode(code: String) {
