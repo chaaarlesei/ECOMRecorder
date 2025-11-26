@@ -4,7 +4,8 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:gravity="center"
-    android:padding="24dp">
+    android:padding="24dp"
+    android:fitsSystemWindows="true">
 
     <TextView
         android:layout_width="wrap_content"
@@ -24,6 +25,13 @@
         android:id="@+id/btn_return"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Return" />
+        android:text="Return"
+        android:layout_marginBottom="12dp" />
+
+    <Button
+        android:id="@+id/btn_continuous"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Continuous" />
 
 </LinearLayout>

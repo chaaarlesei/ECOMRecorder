@@ -78,6 +78,7 @@ class MainActivity : AppCompatActivity() {
 
         val btnPack = findViewById<Button>(R.id.btn_pack)
         val btnReturn = findViewById<Button>(R.id.btn_return)
+        val btnContinuous = findViewById<Button>(R.id.btn_continuous)
 
         btnPack.setOnClickListener {
             currentFolder = "Pack"
@@ -87,6 +88,11 @@ class MainActivity : AppCompatActivity() {
         btnReturn.setOnClickListener {
             currentFolder = "Return"
             requestPermissionsAndPrompt("Return")
+        }
+
+        btnContinuous.setOnClickListener {
+            val intent = Intent(this, ContinuousCaptureActivity::class.java)
+            startActivity(intent)
         }
     }
 
