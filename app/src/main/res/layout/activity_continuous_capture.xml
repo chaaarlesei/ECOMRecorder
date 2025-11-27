@@ -51,22 +51,15 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <Button
-        android:id="@+id/btn_test_api"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:text="Test API"
-        app:layout_constraintBottom_toTopOf="@+id/btn_capture"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <Button
+    <ImageButton
         android:id="@+id/btn_capture"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
         android:layout_marginBottom="32dp"
-        android:text="Start Recording"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Record Button"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_record_start"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />

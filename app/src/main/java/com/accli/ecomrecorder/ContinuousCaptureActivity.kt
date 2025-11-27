@@ -45,14 +45,15 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.os.Handler
 import android.os.Looper
+import androidx.appcompat.app.AlertDialog
 
 class ContinuousCaptureActivity : AppCompatActivity() {
     private lateinit var viewFinder: androidx.camera.view.PreviewView
     private lateinit var tvStatus: TextView
     private lateinit var tvWarning: TextView
     private lateinit var chronometer: Chronometer
-    private lateinit var btnCapture: Button
-    private lateinit var btnTestApi: Button
+    private lateinit var btnCapture: android.widget.ImageButton
+//    private lateinit var btnTestApi: Button
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
     private lateinit var cameraExecutor: ExecutorService
@@ -73,22 +74,32 @@ class ContinuousCaptureActivity : AppCompatActivity() {
         tvWarning = findViewById(R.id.tv_warning)
         chronometer = findViewById(R.id.chronometer)
         btnCapture = findViewById(R.id.btn_capture)
-        btnTestApi = findViewById(R.id.btn_test_api)
+//        btnTestApi = findViewById(R.id.btn_test_api)
 
         startBlinking()
 
         btnCapture.setOnClickListener {
             if (recording != null) {
-                recording?.stop()
-                recording = null
+                // User clicked "Stop Recording" -> Show Confirmation
+                AlertDialog.Builder(this)
+                    .setTitle("Discard Recording?")
+                    .setMessage("Stopping manually will discard the current video. Are you sure?")
+                    .setPositiveButton("Stop & Discard") { _, _ ->
+                        // Proceed to stop (which triggers the delete logic in Finalize)
+                        recording?.stop()
+                        recording = null
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
             } else {
+                // User clicked "Start Recording"
                 startRecording()
             }
         }
 
-        btnTestApi.setOnClickListener {
-            processScan("Test")
-        }
+//        btnTestApi.setOnClickListener {
+//            processScan("Test")
+//        }
 
         if (allPermissionsGranted()) {
             startCamera()
@@ -200,8 +211,10 @@ class ContinuousCaptureActivity : AppCompatActivity() {
     private fun startRecording() {
         val videoCapture = this.videoCapture ?: return
 
+        // Create a temporary filename (will be renamed or deleted later)
         val name = SimpleDateFormat(FILENAME_FORMAT, Locale.US)
             .format(System.currentTimeMillis())
+
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
             put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
@@ -231,7 +244,10 @@ class ContinuousCaptureActivity : AppCompatActivity() {
                     is VideoRecordEvent.Start -> {
                         stopBlinking()
                         tvStatus.text = "Recording..."
-                        btnCapture.text = "Stop Recording"
+
+                        // CHANGE: Set icon to Stop
+                        btnCapture.setImageResource(R.drawable.ic_record_stop)
+
                         chronometer.base = SystemClock.elapsedRealtime()
                         chronometer.start()
                     }
@@ -239,15 +255,15 @@ class ContinuousCaptureActivity : AppCompatActivity() {
                         chronometer.stop()
                         chronometer.base = SystemClock.elapsedRealtime()
                         tvStatus.text = "Ready"
-                        btnCapture.text = "Start Recording"
+                        btnCapture.setImageResource(R.drawable.ic_record_start)
                         startBlinking()
-                        
+
                         if (!recordEvent.hasError()) {
                             val outputUri = recordEvent.outputResults.outputUri
-                            val msg = "Video saved: $outputUri"
-                            
-                            // Rename file if a pending filename exists
+
+                            // CHECK: Was this triggered by a scan?
                             if (pendingFilename != null) {
+                                // YES -> Rename and keep the file
                                 try {
                                     val values = ContentValues().apply {
                                         put(MediaStore.MediaColumns.DISPLAY_NAME, pendingFilename)
@@ -258,21 +274,31 @@ class ContinuousCaptureActivity : AppCompatActivity() {
                                     Log.d(TAG, renameMsg)
                                 } catch (e: Exception) {
                                     Log.e(TAG, "Failed to rename video", e)
-                                    Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(baseContext, "Saved (rename failed)", Toast.LENGTH_SHORT).show()
                                 }
+                                // Reset the flag
                                 pendingFilename = null
                             } else {
-                                Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                                // NO (Manual Stop) -> Delete/Discard the file
+                                try {
+                                    contentResolver.delete(outputUri, null, null)
+                                    val discardMsg = "Recording discarded (not scanned)"
+                                    Toast.makeText(baseContext, discardMsg, Toast.LENGTH_SHORT).show()
+                                    Log.d(TAG, discardMsg)
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Failed to delete discarded video", e)
+                                }
                             }
-                            Log.d(TAG, msg)
                         } else {
+                            // Handle actual recording errors
                             recording?.close()
                             recording = null
                             Log.e(TAG, "Video capture ends with error: ${recordEvent.error}")
                         }
+
                         recording = null
 
-                        // Automatically restart if requested (triggered by scan)
+                        // Automatically restart loop if it was a scan event
                         if (shouldRestartRecording) {
                             shouldRestartRecording = false
                             startRecording()
