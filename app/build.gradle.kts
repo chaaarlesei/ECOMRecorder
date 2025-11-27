@@ -1,13 +1,13 @@
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.android.build.gradle.internal.api.BaseVariantOutputImpl // Import this
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
 }
 
-// Helper function to generate the timestamp
 fun getBuildTime(): String {
     val sdf = SimpleDateFormat("yyyy.MM.dd_HH.mm", Locale.US)
     return sdf.format(Date())
@@ -22,7 +22,6 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = 1
-        // version name is now dynamic based on build time
         versionName = getBuildTime()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -44,10 +43,19 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+
+    applicationVariants.all {
+        if (buildType.name == "release") {
+            val version = this.versionName
+
+            outputs.all {
+                (this as? BaseVariantOutputImpl)?.outputFileName = "ECOM Recorder $version.apk"
+            }
+        }
+    }
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
