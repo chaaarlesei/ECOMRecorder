@@ -87,20 +87,26 @@ class ContinuousCaptureActivity : AppCompatActivity() {
 
         btnCapture.setOnClickListener {
             if (recording != null) {
-                // User clicked "Stop Recording" -> Show Confirmation
+                // STOP LOGIC (Existing confirmation)
                 AlertDialog.Builder(this)
                     .setTitle("Discard Recording?")
                     .setMessage("Stopping manually will discard the current video. Are you sure?")
                     .setPositiveButton("Stop & Discard") { _, _ ->
-                        // Proceed to stop (which triggers the delete logic in Finalize)
                         recording?.stop()
                         recording = null
                     }
                     .setNegativeButton("Cancel", null)
                     .show()
             } else {
-                // User clicked "Start Recording"
-                startRecording()
+                // START LOGIC (New confirmation with corrected grammar)
+                AlertDialog.Builder(this)
+                    .setTitle("Scanner Connected?")
+                    .setMessage("Please make sure the scanner is connected to this device; otherwise, the recording will not be saved.")
+                    .setPositiveButton("Start Recording") { _, _ ->
+                        startRecording()
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
             }
         }
 
