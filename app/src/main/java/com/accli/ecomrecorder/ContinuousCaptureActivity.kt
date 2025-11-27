@@ -48,6 +48,7 @@ import android.os.Looper
 import androidx.appcompat.app.AlertDialog
 import androidx.camera.core.Camera
 import android.widget.ImageButton
+import androidx.activity.OnBackPressedCallback
 
 class ContinuousCaptureActivity : AppCompatActivity() {
     private lateinit var viewFinder: androidx.camera.view.PreviewView
@@ -109,6 +110,32 @@ class ContinuousCaptureActivity : AppCompatActivity() {
                     .show()
             }
         }
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (recording != null) {
+                    // Recording is active -> Show Confirmation
+                    AlertDialog.Builder(this@ContinuousCaptureActivity)
+                        .setTitle("Discard Recording?")
+                        .setMessage("Exiting now will discard the current recording. Are you sure?")
+                        .setPositiveButton("Discard & Exit") { _, _ ->
+                            // Stop the recording (triggers Finalize -> deletes file)
+                            recording?.stop()
+                            recording = null
+
+                            // Proceed to exit the screen
+                            isEnabled = false // Disable this callback so finish() works
+                            finish()
+                        }
+                        .setNegativeButton("Cancel", null)
+                        .show()
+                } else {
+                    // No recording -> Default back behavior (exit)
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
 
 //        btnTestApi.setOnClickListener {
 //            processScan("Test")
@@ -184,7 +211,7 @@ class ContinuousCaptureActivity : AppCompatActivity() {
                     // 3. Generate the combined text
                     val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
                         .format(System.currentTimeMillis())
-                    val address = "15 Sta. Maria Dr. ACCLI, Taguig"
+                    val address = "15 Sta. Maria Drive, ACCLI, Taguig"
                     val fullText = "$timestamp $address"
 
                     // 4. Calculate position (Bottom-Right corner)
