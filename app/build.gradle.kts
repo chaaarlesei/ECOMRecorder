@@ -1,6 +1,16 @@
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+}
+
+// Helper function to generate the timestamp
+fun getBuildTime(): String {
+    val sdf = SimpleDateFormat("yyyy.MM.dd_HH.mm", Locale.US)
+    return sdf.format(Date())
 }
 
 android {
@@ -12,7 +22,8 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0"
+        // version name is now dynamic based on build time
+        versionName = getBuildTime()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
