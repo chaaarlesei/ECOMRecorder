@@ -37,6 +37,14 @@ import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import org.json.JSONObject
+import androidx.camera.core.CameraEffect
+import androidx.camera.core.UseCaseGroup
+import androidx.camera.effects.OverlayEffect
+import androidx.core.util.Consumer
+import android.graphics.Color
+import android.graphics.Paint
+import android.os.Handler
+import android.os.Looper
 
 class ContinuousCaptureActivity : AppCompatActivity() {
     private lateinit var viewFinder: androidx.camera.view.PreviewView
@@ -54,6 +62,8 @@ class ContinuousCaptureActivity : AppCompatActivity() {
     // Variables for video splitting logic
     private var pendingFilename: String? = null
     private var shouldRestartRecording = false
+
+    private var overlayEffect: OverlayEffect? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -111,21 +121,71 @@ class ContinuousCaptureActivity : AppCompatActivity() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+
+            // 1. Setup Preview
             val preview = Preview.Builder().build().also {
                 it.setSurfaceProvider(viewFinder.surfaceProvider)
             }
 
+            // 2. Setup Recorder & VideoCapture
             val recorder = Recorder.Builder()
                 .setQualitySelector(QualitySelector.from(Quality.HIGHEST))
                 .build()
             videoCapture = VideoCapture.withOutput(recorder)
 
+            // 3. Create the OverlayEffect (The OpenGL/MediaCodec magic)
+            // This targets the VIDEO_CAPTURE use case specifically.
+            overlayEffect = OverlayEffect(
+                CameraEffect.VIDEO_CAPTURE,
+                0, // Queue depth (0 means minimal latency)
+                Handler(Looper.getMainLooper()),
+                Consumer { t -> Log.e(TAG, "Overlay error", t) }
+            ).apply {
+                // Configure the drawing logic
+                setOnDrawListener { frame ->
+                    val canvas = frame.overlayCanvas
+
+                    // Setup Paint for the timestamp
+                    val paint = Paint().apply {
+                        color = Color.WHITE
+                        textSize = 60f // Adjust size based on resolution
+                        isAntiAlias = true
+                        style = Paint.Style.FILL
+                        setShadowLayer(5.0f, 2.0f, 2.0f, Color.BLACK) // Black outline/shadow for visibility
+                    }
+
+                    // Generate Timestamp
+                    val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+                        .format(System.currentTimeMillis())
+
+                    // Draw text. Note: Coordinates are in the buffer's coordinate system.
+                    // You might want to position it at the bottom-right or bottom-left.
+                    // frame.size.width and frame.size.height give the buffer dimensions.
+                    val x = 50f
+                    val y = frame.size.height - 50f
+
+                    canvas.drawText(timestamp, x, y, paint)
+
+                    // Return true to indicate we drew something
+                    true
+                }
+            }
+
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
             try {
                 cameraProvider.unbindAll()
+
+                // 4. Bind using UseCaseGroup to include the Effect
+                // We must use UseCaseGroup to attach the effect to the binding
+                val useCaseGroup = UseCaseGroup.Builder()
+                    .addUseCase(preview)
+                    .addUseCase(videoCapture!!)
+                    .addEffect(overlayEffect!!) // Add the overlay effect here
+                    .build()
+
                 cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview, videoCapture
+                    this, cameraSelector, useCaseGroup
                 )
             } catch (exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
