@@ -46,6 +46,8 @@ import android.graphics.Paint
 import android.os.Handler
 import android.os.Looper
 import androidx.appcompat.app.AlertDialog
+import androidx.camera.core.Camera
+import android.widget.ImageButton
 
 class ContinuousCaptureActivity : AppCompatActivity() {
     private lateinit var viewFinder: androidx.camera.view.PreviewView
@@ -59,12 +61,12 @@ class ContinuousCaptureActivity : AppCompatActivity() {
     private lateinit var cameraExecutor: ExecutorService
     private var barcodeBuffer = StringBuilder()
     private var blinkingAnimator: ObjectAnimator? = null
-
-    // Variables for video splitting logic
     private var pendingFilename: String? = null
     private var shouldRestartRecording = false
-
     private var overlayEffect: OverlayEffect? = null
+    private lateinit var btnFlash: ImageButton
+    private var camera: Camera? = null
+    private var isTorchOn = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,6 +77,11 @@ class ContinuousCaptureActivity : AppCompatActivity() {
         chronometer = findViewById(R.id.chronometer)
         btnCapture = findViewById(R.id.btn_capture)
 //        btnTestApi = findViewById(R.id.btn_test_api)
+
+        btnFlash = findViewById(R.id.btn_flash)
+        btnFlash.setOnClickListener {
+            toggleFlash()
+        }
 
         startBlinking()
 
@@ -202,10 +209,44 @@ class ContinuousCaptureActivity : AppCompatActivity() {
                 cameraProvider.bindToLifecycle(
                     this, cameraSelector, useCaseGroup
                 )
+
+                try {
+                    cameraProvider.unbindAll()
+
+                    // UPDATE THIS BLOCK: Assign the result to 'this.camera'
+                    this.camera = cameraProvider.bindToLifecycle(
+                        this, cameraSelector, useCaseGroup
+                    )
+
+                    // Optional: Reset flash state on camera start
+                    isTorchOn = false
+                    updateFlashIcon()
+
+                } catch (exc: Exception) {
+                    Log.e(TAG, "Use case binding failed", exc)
+                }
+
             } catch (exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
             }
         }, ContextCompat.getMainExecutor(this))
+    }
+
+    private fun toggleFlash() {
+        val cam = camera ?: return // If camera isn't ready, do nothing
+
+        if (cam.cameraInfo.hasFlashUnit()) {
+            isTorchOn = !isTorchOn
+            cam.cameraControl.enableTorch(isTorchOn)
+            updateFlashIcon()
+        } else {
+            Toast.makeText(this, "Flash not available", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun updateFlashIcon() {
+        val icon = if (isTorchOn) R.drawable.ic_flash_on else R.drawable.ic_flash_off
+        btnFlash.setImageResource(icon)
     }
 
     private fun startRecording() {
