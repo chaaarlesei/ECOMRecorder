@@ -136,38 +136,42 @@ class ContinuousCaptureActivity : AppCompatActivity() {
             // 3. Create the OverlayEffect (The OpenGL/MediaCodec magic)
             // This targets the VIDEO_CAPTURE use case specifically.
             overlayEffect = OverlayEffect(
-                CameraEffect.VIDEO_CAPTURE,
-                0, // Queue depth (0 means minimal latency)
+                CameraEffect.VIDEO_CAPTURE, // Target only the video recording
+                0, // Queue depth of 0 for minimal latency
                 Handler(Looper.getMainLooper()),
-                Consumer { t -> Log.e(TAG, "Overlay error", t) }
+                { t -> Log.e(TAG, "Overlay error", t) }
             ).apply {
-                // Configure the drawing logic
                 setOnDrawListener { frame ->
                     val canvas = frame.overlayCanvas
 
-                    // Setup Paint for the timestamp
-                    val paint = Paint().apply {
+                    // 1. CLEAR THE PREVIOUS FRAME (Fixes the "multiple layers" / ghosting)
+                    canvas.drawColor(0, android.graphics.PorterDuff.Mode.CLEAR)
+
+                    // 2. Setup Paint for clear visibility (White text with Black shadow)
+                    val textPaint = Paint().apply {
                         color = Color.WHITE
-                        textSize = 60f // Adjust size based on resolution
+                        textSize = 60f // Adjust size as needed
                         isAntiAlias = true
                         style = Paint.Style.FILL
-                        setShadowLayer(5.0f, 2.0f, 2.0f, Color.BLACK) // Black outline/shadow for visibility
+                        // Add a shadow to make it readable on bright backgrounds
+                        setShadowLayer(10f, 0f, 0f, Color.BLACK)
+                        // Align text to the right so it stays anchored to the corner
+                        textAlign = Paint.Align.RIGHT
                     }
 
-                    // Generate Timestamp
+                    // 3. Generate Timestamp
                     val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
                         .format(System.currentTimeMillis())
 
-                    // Draw text. Note: Coordinates are in the buffer's coordinate system.
-                    // You might want to position it at the bottom-right or bottom-left.
-                    // frame.size.width and frame.size.height give the buffer dimensions.
-                    val x = 50f
-                    val y = frame.size.height - 50f
+                    // 4. Calculate dynamic position (Bottom-Right corner with padding)
+                    val padding = 50f
+                    val x = frame.size.width - padding
+                    val y = frame.size.height - padding
 
-                    canvas.drawText(timestamp, x, y, paint)
+                    // 5. Draw the timestamp
+                    canvas.drawText(timestamp, x, y, textPaint)
 
-                    // Return true to indicate we drew something
-                    true
+                    true // Return true to indicate we drew the frame
                 }
             }
 
