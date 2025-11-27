@@ -160,42 +160,42 @@ class ContinuousCaptureActivity : AppCompatActivity() {
             // 3. Create the OverlayEffect (The OpenGL/MediaCodec magic)
             // This targets the VIDEO_CAPTURE use case specifically.
             overlayEffect = OverlayEffect(
-                CameraEffect.VIDEO_CAPTURE, // Target only the video recording
-                0, // Queue depth of 0 for minimal latency
+                CameraEffect.VIDEO_CAPTURE,
+                0,
                 Handler(Looper.getMainLooper()),
                 { t -> Log.e(TAG, "Overlay error", t) }
             ).apply {
                 setOnDrawListener { frame ->
                     val canvas = frame.overlayCanvas
 
-                    // 1. CLEAR THE PREVIOUS FRAME (Fixes the "multiple layers" / ghosting)
+                    // 1. Clear the canvas to prevent "ghosting"
                     canvas.drawColor(0, android.graphics.PorterDuff.Mode.CLEAR)
 
-                    // 2. Setup Paint for clear visibility (White text with Black shadow)
+                    // 2. Setup Paint (Smaller text size)
                     val textPaint = Paint().apply {
                         color = Color.WHITE
-                        textSize = 60f // Adjust size as needed
+                        textSize = 30f // Reduced size (was 60f)
                         isAntiAlias = true
                         style = Paint.Style.FILL
-                        // Add a shadow to make it readable on bright backgrounds
-                        setShadowLayer(10f, 0f, 0f, Color.BLACK)
-                        // Align text to the right so it stays anchored to the corner
-                        textAlign = Paint.Align.RIGHT
+                        setShadowLayer(4f, 0f, 0f, Color.BLACK) // Shadow for visibility
+                        textAlign = Paint.Align.RIGHT // Align to the right side
                     }
 
-                    // 3. Generate Timestamp
+                    // 3. Generate the combined text
                     val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
                         .format(System.currentTimeMillis())
+                    val address = "15 Sta. Maria Dr. ACCLI, Taguig"
+                    val fullText = "$timestamp $address"
 
-                    // 4. Calculate dynamic position (Bottom-Right corner with padding)
-                    val padding = 50f
+                    // 4. Calculate position (Bottom-Right corner)
+                    val padding = 30f
                     val x = frame.size.width - padding
                     val y = frame.size.height - padding
 
-                    // 5. Draw the timestamp
-                    canvas.drawText(timestamp, x, y, textPaint)
+                    // 5. Draw the text
+                    canvas.drawText(fullText, x, y, textPaint)
 
-                    true // Return true to indicate we drew the frame
+                    true
                 }
             }
 
