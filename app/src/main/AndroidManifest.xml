@@ -10,7 +10,6 @@
     <!-- Declare optional hardware features so Play/store filtering and permission declarations align -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
-
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -22,7 +21,10 @@
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.ECOMRecorder">
 
-        <activity android:name="com.accli.ecomrecorder.MainActivity" android:exported="true">
+        <activity
+            android:name="com.accli.ecomrecorder.MainActivity"
+            android:screenOrientation="portrait"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -31,13 +33,13 @@
 
         <activity
             android:name=".CaptureActivity"
-            android:screenOrientation="fullSensor"
+            android:screenOrientation="portrait"
             android:stateNotNeeded="true"
             tools:replace="screenOrientation" />
 
         <activity
             android:name=".ContinuousCaptureActivity"
-            android:screenOrientation="fullSensor"
+            android:screenOrientation="portrait"
             android:exported="false" />
 
     </application>
