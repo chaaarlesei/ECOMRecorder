@@ -142,7 +142,7 @@ class ContinuousCaptureActivity : AppCompatActivity() {
                 }
             }
         })
-        
+
         if (allPermissionsGranted()) {
             startCamera()
         } else {

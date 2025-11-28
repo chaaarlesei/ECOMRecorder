@@ -9,6 +9,7 @@
     android:padding="24dp"
     tools:context=".MainActivity">
 
+    <!-- Header Section -->
     <TextView
         android:id="@+id/tv_app_title"
         android:layout_width="wrap_content"
@@ -29,16 +30,18 @@
         android:text="Select a mode to begin"
         android:textColor="#757575"
         android:textSize="16sp"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="120dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_app_title" />
+
+    <!-- Button Container (Chained Center) -->
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_pack"
         android:layout_width="0dp"
         android:layout_height="72dp"
-        android:layout_marginTop="32dp"
+        android:layout_marginTop="8dp"
         android:text="Pack Mode"
         android:textSize="18sp"
         android:textStyle="bold"
@@ -95,6 +98,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/btn_return" />
 
+    <!-- Version Footer -->
     <TextView
         android:id="@+id/tv_version"
         android:layout_width="wrap_content"
@@ -106,5 +110,18 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
+
+    <!-- Folder Button (Bottom Right) -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btn_folder"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:src="@drawable/ic_folder"
+        android:contentDescription="Open Gallery"
+        app:backgroundTint="#FFFFFF"
+        app:tint="#555555"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

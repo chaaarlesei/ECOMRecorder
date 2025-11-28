@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
     <!-- Declare optional hardware features so Play/store filtering and permission declarations align -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
@@ -41,6 +43,22 @@
             android:name=".ContinuousCaptureActivity"
             android:screenOrientation="portrait"
             android:exported="false" />
+
+        <activity
+            android:name=".FolderListActivity"
+            android:screenOrientation="portrait"
+            android:label="Recordings"
+            android:parentActivityName=".MainActivity" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths" />
+        </provider>
 
     </application>
 

@@ -4,7 +4,10 @@ import android.app.Activity
 import android.content.ContentValues
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.widget.Button
 import android.widget.EditText
@@ -14,7 +17,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.accli.ecomrecorder.CaptureActivity
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.zxing.integration.android.IntentIntegrator
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
@@ -64,8 +69,14 @@ class MainActivity : AppCompatActivity() {
     private val permissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { perms ->
-        val granted = perms.entries.all { it.value }
-        if (granted) {
+        // Check core permissions (Camera & Audio are mandatory)
+        val cameraGranted = perms[android.Manifest.permission.CAMERA] ?: false
+        val audioGranted = perms[android.Manifest.permission.RECORD_AUDIO] ?: false
+
+        if (cameraGranted && audioGranted) {
+            // Permission granted
+            createAppFolders()
+            // START THE SCAN
             startBarcodeScan()
         } else {
             Toast.makeText(this, "Permissions required: Camera + Audio", Toast.LENGTH_LONG).show()
@@ -74,11 +85,15 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        supportActionBar?.hide()
         setContentView(R.layout.activity_main)
+
+        createAppFolders()
 
         val btnPack = findViewById<Button>(R.id.btn_pack)
         val btnReturn = findViewById<Button>(R.id.btn_return)
         val btnContinuous = findViewById<Button>(R.id.btn_continuous)
+        val btnFolder = findViewById<FloatingActionButton>(R.id.btn_folder)
 
         btnPack.setOnClickListener {
             currentFolder = "Pack"
@@ -94,15 +109,49 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this, ContinuousCaptureActivity::class.java)
             startActivity(intent)
         }
+
+        btnFolder.setOnClickListener {
+            val intent = Intent(this, FolderListActivity::class.java)
+            startActivity(intent)
+        }
+    }
+
+    private fun createAppFolders() {
+        try {
+            val dcim = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
+            val ecom = File(dcim, "Ecom")
+            if (!ecom.exists()) ecom.mkdirs()
+
+            File(ecom, "Pack").mkdirs()
+            File(ecom, "Return").mkdirs()
+            File(ecom, "Continuous").mkdirs()
+        } catch (e: Exception) {
+            // Ignore errors
+        }
     }
 
     private fun requestPermissionsAndPrompt(folder: String) {
-        permissionsLauncher.launch(
-            arrayOf(
-                android.Manifest.permission.CAMERA,
-                android.Manifest.permission.RECORD_AUDIO,
-            )
+        val permissions = mutableListOf(
+            android.Manifest.permission.CAMERA,
+            android.Manifest.permission.RECORD_AUDIO
         )
+
+        // Add storage permissions correctly based on Android Version
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+            // Android 9 (Pie) and below need Write permission to create files
+            permissions.add(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        }
+
+        // Add Read permission for the folder viewer feature
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Android 13+
+            permissions.add(android.Manifest.permission.READ_MEDIA_VIDEO)
+        } else {
+            // Android 12 and below
+            permissions.add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+
+        permissionsLauncher.launch(permissions.toTypedArray())
     }
 
     private fun promptForFilenameAndStart(folder: String) {
