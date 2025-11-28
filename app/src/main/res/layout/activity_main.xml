@@ -1,37 +1,110 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center"
+    android:background="#F8F9FA"
     android:padding="24dp"
-    android:fitsSystemWindows="true">
+    tools:context=".MainActivity">
 
     <TextView
+        android:id="@+id/tv_app_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Select mode"
-        android:textSize="20sp"
-        android:layout_marginBottom="16dp" />
+        android:text="ECOM Recorder"
+        android:textColor="#212121"
+        android:textSize="32sp"
+        android:textStyle="bold"
+        android:layout_marginTop="48dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
-    <Button
+    <TextView
+        android:id="@+id/tv_subtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Select a mode to begin"
+        android:textColor="#757575"
+        android:textSize="16sp"
+        android:layout_marginTop="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_app_title" />
+
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_pack"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Pack"
-        android:layout_marginBottom="12dp" />
+        android:layout_width="0dp"
+        android:layout_height="72dp"
+        android:layout_marginTop="32dp"
+        android:text="Pack Mode"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textAllCaps="false"
+        android:backgroundTint="#4CAF50"
+        app:cornerRadius="16dp"
+        app:icon="@drawable/ic_pack"
+        app:iconGravity="textStart"
+        app:iconPadding="16dp"
+        app:iconSize="28dp"
+        app:layout_constraintBottom_toTopOf="@+id/btn_return"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_subtitle"
+        app:layout_constraintVertical_chainStyle="packed" />
 
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_return"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Return"
-        android:layout_marginBottom="12dp" />
+        android:layout_width="0dp"
+        android:layout_height="72dp"
+        android:layout_marginTop="16dp"
+        android:text="Return Mode"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textAllCaps="false"
+        android:backgroundTint="#FF9800"
+        app:cornerRadius="16dp"
+        app:icon="@drawable/ic_return"
+        app:iconGravity="textStart"
+        app:iconPadding="16dp"
+        app:iconSize="28dp"
+        app:layout_constraintBottom_toTopOf="@+id/btn_continuous"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btn_pack" />
 
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_continuous"
+        android:layout_width="0dp"
+        android:layout_height="72dp"
+        android:layout_marginTop="16dp"
+        android:text="Continuous"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textAllCaps="false"
+        android:backgroundTint="#2196F3"
+        app:cornerRadius="16dp"
+        app:icon="@drawable/ic_continuous"
+        app:iconGravity="textStart"
+        app:iconPadding="16dp"
+        app:iconSize="28dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btn_return" />
+
+    <TextView
+        android:id="@+id/tv_version"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Continuous" />
+        android:text="v2025.11.27"
+        android:textColor="#BDBDBD"
+        android:textSize="12sp"
+        android:layout_marginBottom="16dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
-</LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>
