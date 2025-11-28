@@ -12,7 +12,6 @@ import android.provider.MediaStore
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
-import android.widget.Button
 import android.widget.Chronometer
 import android.widget.TextView
 import android.widget.Toast
@@ -30,17 +29,13 @@ import androidx.camera.video.VideoRecordEvent
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
-import java.net.HttpURLConnection
-import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import org.json.JSONObject
 import androidx.camera.core.CameraEffect
 import androidx.camera.core.UseCaseGroup
 import androidx.camera.effects.OverlayEffect
-import androidx.core.util.Consumer
 import android.graphics.Color
 import android.graphics.Paint
 import android.os.Handler
@@ -446,47 +441,11 @@ class ContinuousCaptureActivity : AppCompatActivity() {
     }
 
     private fun processScan(code: String) {
-        // 1. Send to API
-        sendBarcode(code)
-
-        // 2. If recording, stop current video, queue rename, and set flag to restart
         if (recording != null) {
             pendingFilename = "$code.mp4"
             shouldRestartRecording = true
             recording?.stop()
             recording = null
-        }
-    }
-
-    private fun sendBarcode(code: String) {
-        cameraExecutor.execute {
-            try {
-                val url = URL("http://192.168.1.153:3000/pack")
-                with(url.openConnection() as HttpURLConnection) {
-                    requestMethod = "POST"
-                    doOutput = true
-                    setRequestProperty("Content-Type", "application/json")
-
-                    val json = JSONObject()
-                    json.put("trackingNo", code)
-                    val jsonString = json.toString()
-
-                    outputStream.write(jsonString.toByteArray())
-                    outputStream.flush()
-
-                    val responseCode = responseCode
-                    if (responseCode in 200..299) {
-                        runOnUiThread {
-                            Toast.makeText(this@ContinuousCaptureActivity, "Scanned: $code", Toast.LENGTH_SHORT).show()
-                        }
-                    } else {
-                        Log.e(TAG, "Server returned error: $responseCode")
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                Log.e(TAG, "Failed to send barcode", e)
-            }
         }
     }
 
