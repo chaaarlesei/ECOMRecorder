@@ -68,6 +68,8 @@ class ContinuousCaptureActivity : AppCompatActivity() {
     private lateinit var btnFlash: ImageButton
     private var camera: Camera? = null
     private var isTorchOn = false
+    private lateinit var btnPause: ImageButton
+    private var isPaused = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -85,6 +87,18 @@ class ContinuousCaptureActivity : AppCompatActivity() {
         }
 
         startBlinking()
+
+        btnPause = findViewById(R.id.btn_pause)
+
+        btnPause.setOnClickListener {
+            if (recording != null) {
+                if (isPaused) {
+                    recording?.resume()
+                } else {
+                    recording?.pause()
+                }
+            }
+        }
 
         btnCapture.setOnClickListener {
             if (recording != null) {
@@ -316,16 +330,46 @@ class ContinuousCaptureActivity : AppCompatActivity() {
             .start(ContextCompat.getMainExecutor(this)) { recordEvent ->
                 when (recordEvent) {
                     is VideoRecordEvent.Start -> {
+                        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                         stopBlinking()
                         tvStatus.text = "Recording..."
-
-                        // CHANGE: Set icon to Stop
                         btnCapture.setImageResource(R.drawable.ic_record_stop)
+
+                        btnPause.visibility = View.VISIBLE
+                        btnPause.setImageResource(R.drawable.ic_pause)
+                        isPaused = false
 
                         chronometer.base = SystemClock.elapsedRealtime()
                         chronometer.start()
                     }
+
+                    is VideoRecordEvent.Pause -> {
+                        // PAUSED
+                        isPaused = true
+                        btnPause.setImageResource(R.drawable.ic_resume)
+                        tvStatus.text = "Paused"
+                        chronometer.stop()
+                        startBlinking()
+                    }
+
+                    is VideoRecordEvent.Resume -> {
+                        // RESUMED
+                        isPaused = false
+                        btnPause.setImageResource(R.drawable.ic_pause) // Change back to Pause icon
+                        tvStatus.text = "Recording..."
+                        stopBlinking()
+
+                        val timePassed = SystemClock.elapsedRealtime() - recordEvent.recordingStats.recordedDurationNanos / 1000000
+                        chronometer.base = timePassed
+                        chronometer.start()
+                    }
+
                     is VideoRecordEvent.Finalize -> {
+                        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+                        btnPause.visibility = View.GONE
+                        isPaused = false
+
                         chronometer.stop()
                         chronometer.base = SystemClock.elapsedRealtime()
                         tvStatus.text = "Ready"
