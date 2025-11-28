@@ -51,7 +51,6 @@ class ContinuousCaptureActivity : AppCompatActivity() {
     private lateinit var tvWarning: TextView
     private lateinit var chronometer: Chronometer
     private lateinit var btnCapture: android.widget.ImageButton
-//    private lateinit var btnTestApi: Button
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
     private lateinit var cameraExecutor: ExecutorService
@@ -74,8 +73,6 @@ class ContinuousCaptureActivity : AppCompatActivity() {
         tvWarning = findViewById(R.id.tv_warning)
         chronometer = findViewById(R.id.chronometer)
         btnCapture = findViewById(R.id.btn_capture)
-//        btnTestApi = findViewById(R.id.btn_test_api)
-
         btnFlash = findViewById(R.id.btn_flash)
         btnFlash.setOnClickListener {
             toggleFlash()
@@ -145,11 +142,7 @@ class ContinuousCaptureActivity : AppCompatActivity() {
                 }
             }
         })
-
-//        btnTestApi.setOnClickListener {
-//            processScan("Test")
-//        }
-
+        
         if (allPermissionsGranted()) {
             startCamera()
         } else {
