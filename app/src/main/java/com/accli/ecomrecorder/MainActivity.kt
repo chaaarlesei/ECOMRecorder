@@ -128,6 +128,11 @@ class MainActivity : AppCompatActivity() {
         val tvVersion = findViewById<TextView>(R.id.tv_version)
         tvVersion.text = "v${BuildConfig.VERSION_NAME}"
 
+        // Set dynamic copyright year
+        val tvCopyright = findViewById<TextView>(R.id.tv_copyright)
+        val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+        tvCopyright.text = "© $currentYear Asia Cargo Container Line, Inc."
+
         // Register USB receiver
         val filter = IntentFilter().apply {
             addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
