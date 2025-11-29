@@ -1,23 +1,30 @@
 package com.accli.ecomrecorder
 
 import android.app.Activity
+import android.content.BroadcastReceiver
 import android.content.ContentValues
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.res.ColorStateList
+import android.graphics.Color
+import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.provider.DocumentsContract
 import android.provider.MediaStore
-import android.widget.Button
+import android.view.View
 import android.widget.EditText
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import com.accli.ecomrecorder.CaptureActivity
-import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.card.MaterialCardView
 import com.google.zxing.integration.android.IntentIntegrator
 import java.io.File
 
@@ -83,6 +90,33 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val usbReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
+                    updateScannerStatus(true)
+                }
+                UsbManager.ACTION_USB_DEVICE_DETACHED -> {
+                    updateScannerStatus(false)
+                }
+            }
+        }
+    }
+
+    private val batteryReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val level = intent.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1)
+            val scale = intent.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1)
+            val batteryPct = (level.toFloat() / scale.toFloat() * 100).toInt()
+
+            val status = intent.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1)
+            val isCharging = status == android.os.BatteryManager.BATTERY_STATUS_CHARGING ||
+                    status == android.os.BatteryManager.BATTERY_STATUS_FULL
+
+            updateBatteryStatus(batteryPct, isCharging)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
@@ -90,29 +124,194 @@ class MainActivity : AppCompatActivity() {
 
         createAppFolders()
 
-        val btnPack = findViewById<Button>(R.id.btn_pack)
-        val btnReturn = findViewById<Button>(R.id.btn_return)
-        val btnContinuous = findViewById<Button>(R.id.btn_continuous)
-        val btnFolder = findViewById<FloatingActionButton>(R.id.btn_folder)
+        // Set dynamic version
+        val tvVersion = findViewById<TextView>(R.id.tv_version)
+        tvVersion.text = "v${BuildConfig.VERSION_NAME}"
 
-        btnPack.setOnClickListener {
+        // Register USB receiver
+        val filter = IntentFilter().apply {
+            addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
+            addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+        }
+        registerReceiver(usbReceiver, filter)
+
+        // Register Battery receiver
+        val batteryFilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        registerReceiver(batteryReceiver, batteryFilter)
+
+        // Check initial USB scanner status
+        checkInitialScannerStatus()
+
+        // Check initial battery status
+        checkInitialBatteryStatus()
+
+        // Check storage status
+        checkStorageStatus()
+
+        // Use MaterialCardView instead of Button
+        val cardPack = findViewById<MaterialCardView>(R.id.card_pack)
+        val cardReturn = findViewById<MaterialCardView>(R.id.card_return)
+        val cardContinuous = findViewById<MaterialCardView>(R.id.card_continuous)
+        val btnGallery = findViewById<MaterialButton>(R.id.btn_gallery)
+
+        cardPack.setOnClickListener {
             currentFolder = "Pack"
             requestPermissionsAndPrompt("Pack")
         }
 
-        btnReturn.setOnClickListener {
+        cardReturn.setOnClickListener {
             currentFolder = "Return"
             requestPermissionsAndPrompt("Return")
         }
 
-        btnContinuous.setOnClickListener {
+        cardContinuous.setOnClickListener {
             val intent = Intent(this, ContinuousCaptureActivity::class.java)
             startActivity(intent)
         }
 
-        btnFolder.setOnClickListener {
+        btnGallery.setOnClickListener {
             val intent = Intent(this, FolderListActivity::class.java)
             startActivity(intent)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        try {
+            unregisterReceiver(usbReceiver)
+            unregisterReceiver(batteryReceiver)
+        } catch (e: Exception) {
+            // Receiver not registered
+        }
+    }
+
+    private fun checkInitialScannerStatus() {
+        val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
+        val deviceList = usbManager.deviceList
+
+        // Check if any USB device is connected
+        val hasUsbDevice = deviceList.isNotEmpty()
+
+        // Optionally: Check for specific barcode scanner vendors
+        // Common barcode scanner vendors: Honeywell, Zebra, etc.
+        val isScannerConnected = deviceList.values.any { device ->
+            // You can add specific vendor IDs here if needed
+            // Example: device.vendorId == 0x0C2E (Honeywell)
+            isLikelyBarcodeScanner(device)
+        }
+
+        updateScannerStatus(isScannerConnected)
+    }
+
+    private fun isLikelyBarcodeScanner(device: UsbDevice): Boolean {
+        // Common barcode scanner vendor IDs
+        val scannerVendors = listOf(
+            0x0C2E,  // Honeywell
+            0x05E0,  // Symbol/Zebra
+            0x0536,  // Datalogic
+            0x1EAB,  // Zebra Technologies
+            0x0C27   // Code
+        )
+
+        // Check if it's a HID device (most barcode scanners are HID)
+        val isHID = device.deviceClass == 0 || device.deviceClass == 3
+
+        return scannerVendors.contains(device.vendorId) ||
+                (isHID && device.deviceName.contains("usb", ignoreCase = true))
+    }
+
+    private fun updateScannerStatus(connected: Boolean) {
+        val indicator = findViewById<View>(R.id.scanner_status_indicator)
+        val statusText = findViewById<TextView>(R.id.tv_scanner_status)
+
+        if (connected) {
+            indicator.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#4CAF50"))
+            statusText.text = "Scanner Connected"
+        } else {
+            indicator.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#F44336"))
+            statusText.text = "Scanner Disconnected"
+        }
+    }
+
+    private fun checkInitialBatteryStatus() {
+        val batteryStatus = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        batteryStatus?.let { intent ->
+            val level = intent.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1)
+            val scale = intent.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1)
+            val batteryPct = (level.toFloat() / scale.toFloat() * 100).toInt()
+
+            val status = intent.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1)
+            val isCharging = status == android.os.BatteryManager.BATTERY_STATUS_CHARGING ||
+                    status == android.os.BatteryManager.BATTERY_STATUS_FULL
+
+            updateBatteryStatus(batteryPct, isCharging)
+        }
+    }
+
+    private fun updateBatteryStatus(percentage: Int, isCharging: Boolean) {
+        val indicator = findViewById<View>(R.id.battery_status_indicator)
+        val statusText = findViewById<TextView>(R.id.tv_battery_status)
+
+        // Color based on battery level
+        val color = when {
+            percentage >= 60 -> "#4CAF50"  // Green
+            percentage >= 30 -> "#FF9800"  // Orange
+            else -> "#F44336"              // Red
+        }
+
+        indicator.backgroundTintList = ColorStateList.valueOf(Color.parseColor(color))
+
+        val chargingText = if (isCharging) " (Charging)" else ""
+        statusText.text = "Battery: $percentage%$chargingText"
+    }
+
+    private fun checkStorageStatus() {
+        val indicator = findViewById<View>(R.id.storage_status_indicator)
+        val statusText = findViewById<TextView>(R.id.tv_storage_status)
+
+        try {
+            val stat = android.os.StatFs(Environment.getExternalStorageDirectory().path)
+            val bytesAvailable = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                stat.blockSizeLong * stat.availableBlocksLong
+            } else {
+                @Suppress("DEPRECATION")
+                stat.blockSize.toLong() * stat.availableBlocks.toLong()
+            }
+
+            val bytesTotal = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                stat.blockSizeLong * stat.blockCountLong
+            } else {
+                @Suppress("DEPRECATION")
+                stat.blockSize.toLong() * stat.blockCount.toLong()
+            }
+
+            // Convert to GB
+            val gbAvailable = bytesAvailable / (1024.0 * 1024.0 * 1024.0)
+            val gbTotal = bytesTotal / (1024.0 * 1024.0 * 1024.0)
+            val percentageUsed = ((gbTotal - gbAvailable) / gbTotal * 100).toInt()
+
+            // Color based on available storage
+            val color = when {
+                gbAvailable >= 5.0 -> "#4CAF50"   // Green - 5GB+ available
+                gbAvailable >= 2.0 -> "#FF9800"   // Orange - 2-5GB available
+                else -> "#F44336"                  // Red - Less than 2GB
+            }
+
+            indicator.backgroundTintList = ColorStateList.valueOf(Color.parseColor(color))
+            statusText.text = "Storage: %.1f GB free (%.0f%% used)".format(gbAvailable, percentageUsed.toFloat())
+
+            // Show warning if low storage
+            if (gbAvailable < 2.0) {
+                Toast.makeText(
+                    this,
+                    "Warning: Low storage space. Please free up space or transfer videos.",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+
+        } catch (e: Exception) {
+            indicator.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#9E9E9E"))
+            statusText.text = "Storage: Unable to check"
         }
     }
 

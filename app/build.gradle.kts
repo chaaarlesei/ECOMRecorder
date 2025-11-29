@@ -1,7 +1,7 @@
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import com.android.build.gradle.internal.api.BaseVariantOutputImpl // Import this
+import com.android.build.gradle.internal.api.BaseVariantOutputImpl
 
 plugins {
     alias(libs.plugins.android.application)
@@ -27,6 +27,10 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -36,10 +40,12 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     kotlinOptions {
         jvmTarget = "11"
     }

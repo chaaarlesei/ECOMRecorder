@@ -28,7 +28,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         tools:listitem="@layout/item_file_list" />
 
-    <!-- THIS WAS MISSING: The Empty State Layout -->
+    <!-- Empty State Layout -->
     <LinearLayout
         android:id="@+id/layout_empty"
         android:layout_width="wrap_content"

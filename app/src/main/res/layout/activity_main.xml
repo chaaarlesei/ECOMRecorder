@@ -5,123 +5,505 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F8F9FA"
-    android:padding="24dp"
+    android:background="#F5F5F5"
+    android:fitsSystemWindows="true"
     tools:context=".MainActivity">
 
-    <!-- Header Section -->
-    <TextView
-        android:id="@+id/tv_app_title"
-        android:layout_width="wrap_content"
+    <!-- Top Bar with Warehouse Theme -->
+    <LinearLayout
+        android:id="@+id/top_bar"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="ECOM Recorder"
-        android:textColor="#212121"
-        android:textSize="32sp"
-        android:textStyle="bold"
-        android:layout_marginTop="48dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:background="#283593"
+        android:orientation="vertical"
+        android:paddingTop="12dp"
+        android:paddingBottom="16dp"
+        android:elevation="4dp"
+        app:layout_constraintTop_toTopOf="parent">
 
-    <TextView
-        android:id="@+id/tv_subtitle"
-        android:layout_width="wrap_content"
+        <!-- Header Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingHorizontal="20dp"
+            android:gravity="center_vertical">
+
+            <!-- Warehouse Icon -->
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_continuous"
+                android:contentDescription="Warehouse"
+                app:tint="#FFFFFF" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="ECOM RECORDER"
+                    android:textColor="#FFFFFF"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.05"
+                    android:fontFamily="sans-serif-condensed" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Warehouse Operations System"
+                    android:textColor="#B3E5FC"
+                    android:textSize="13sp"
+                    android:layout_marginTop="2dp" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Main Content Area -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toBottomOf="@id/top_bar"
+        app:layout_constraintBottom_toTopOf="@id/footer_layout">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Section Header -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="16dp">
+
+                <View
+                    android:layout_width="4dp"
+                    android:layout_height="24dp"
+                    android:background="#283593" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SELECT OPERATION"
+                    android:textColor="#212121"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.08"
+                    android:layout_marginStart="12dp" />
+            </LinearLayout>
+
+            <!-- Pack Mode Button -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_pack"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="#FFFFFF"
+                android:layout_marginBottom="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="20dp"
+                    android:minHeight="96dp"
+                    android:gravity="center_vertical">
+
+                    <!-- Icon Area -->
+                    <FrameLayout
+                        android:layout_width="60dp"
+                        android:layout_height="60dp"
+                        android:background="@drawable/ic_logistic_bg"
+                        android:backgroundTint="#E8F5E9">
+
+                        <ImageView
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_pack"
+                            android:contentDescription="Pack Icon"
+                            app:tint="#2E7D32" />
+                    </FrameLayout>
+
+                    <!-- Text Content -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:layout_marginStart="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="PACK MODE"
+                            android:textColor="#212121"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:letterSpacing="0.03"
+                            android:fontFamily="sans-serif-medium" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Outbound Shipping"
+                            android:textColor="#757575"
+                            android:textSize="14sp"
+                            android:layout_marginTop="4dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Record items for packaging"
+                            android:textColor="#9E9E9E"
+                            android:textSize="12sp"
+                            android:layout_marginTop="2dp" />
+                    </LinearLayout>
+
+                    <!-- Arrow -->
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_chevron_right"
+                        android:contentDescription="Navigate"
+                        app:tint="#283593" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Return Mode Button -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_return"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="#FFFFFF"
+                android:layout_marginBottom="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="20dp"
+                    android:minHeight="96dp"
+                    android:gravity="center_vertical">
+
+                    <FrameLayout
+                        android:layout_width="60dp"
+                        android:layout_height="60dp"
+                        android:background="@drawable/ic_logistic_bg"
+                        android:backgroundTint="#FFF3E0">
+
+                        <ImageView
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_return"
+                            android:contentDescription="Return Icon"
+                            app:tint="#F57C00" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:layout_marginStart="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="RETURN MODE"
+                            android:textColor="#212121"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:letterSpacing="0.03"
+                            android:fontFamily="sans-serif-medium" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Inbound Return Processing"
+                            android:textColor="#757575"
+                            android:textSize="14sp"
+                            android:layout_marginTop="4dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Record items from returned parcels"
+                            android:textColor="#9E9E9E"
+                            android:textSize="12sp"
+                            android:layout_marginTop="2dp" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_chevron_right"
+                        android:contentDescription="Navigate"
+                        app:tint="#283593" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Continuous Mode Button -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_continuous"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="#FFFFFF"
+                android:layout_marginBottom="20dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="20dp"
+                    android:minHeight="96dp"
+                    android:gravity="center_vertical">
+
+                    <FrameLayout
+                        android:layout_width="60dp"
+                        android:layout_height="60dp"
+                        android:background="@drawable/ic_logistic_bg"
+                        android:backgroundTint="#E3F2FD">
+
+                        <ImageView
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_continuous"
+                            android:contentDescription="Continuous Icon"
+                            app:tint="#1976D2" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:layout_marginStart="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="CONTINUOUS MODE"
+                            android:textColor="#212121"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:letterSpacing="0.03"
+                            android:fontFamily="sans-serif-medium" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Batch Scanning Operations"
+                            android:textColor="#757575"
+                            android:textSize="14sp"
+                            android:layout_marginTop="4dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Non-stop recording session"
+                            android:textColor="#9E9E9E"
+                            android:textSize="12sp"
+                            android:layout_marginTop="2dp" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_chevron_right"
+                        android:contentDescription="Navigate"
+                        app:tint="#283593" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Divider Line -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#E0E0E0"
+                android:layout_marginVertical="8dp" />
+
+            <!-- Quick Actions Section -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_gallery"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="8dp"
+                android:text="View Records"
+                android:textSize="15sp"
+                android:textAllCaps="false"
+                android:textStyle="bold"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                app:strokeColor="#283593"
+                app:strokeWidth="2dp"
+                app:cornerRadius="8dp"
+                app:icon="@drawable/ic_folder"
+                app:iconGravity="textStart"
+                app:iconSize="22dp"
+                app:iconTint="#283593"
+                android:textColor="#283593" />
+
+            <!-- System Status Section -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="24dp"
+                android:padding="16dp"
+                android:background="@drawable/ic_logistic_bg"
+                android:backgroundTint="#FAFAFA">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SYSTEM STATUS"
+                    android:textColor="#757575"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- Scanner Status -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="10dp">
+
+                    <View
+                        android:id="@+id/scanner_status_indicator"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:background="@drawable/ic_logistic_bg"
+                        android:backgroundTint="#F44336" />
+
+                    <TextView
+                        android:id="@+id/tv_scanner_status"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Scanner Disconnected"
+                        android:textColor="#424242"
+                        android:textSize="13sp"
+                        android:layout_marginStart="12dp" />
+                </LinearLayout>
+
+                <!-- Battery Status -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="10dp">
+
+                    <View
+                        android:id="@+id/battery_status_indicator"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:background="@drawable/ic_logistic_bg"
+                        android:backgroundTint="#4CAF50" />
+
+                    <TextView
+                        android:id="@+id/tv_battery_status"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Battery: 100%"
+                        android:textColor="#424242"
+                        android:textSize="13sp"
+                        android:layout_marginStart="12dp" />
+                </LinearLayout>
+
+                <!-- Storage Status -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <View
+                        android:id="@+id/storage_status_indicator"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:background="@drawable/ic_logistic_bg"
+                        android:backgroundTint="#4CAF50" />
+
+                    <TextView
+                        android:id="@+id/tv_storage_status"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Storage: Checking..."
+                        android:textColor="#424242"
+                        android:textSize="13sp"
+                        android:layout_marginStart="12dp" />
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </ScrollView>
+
+    <!-- Footer with Version and Copyright -->
+    <LinearLayout
+        android:id="@+id/footer_layout"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Select a mode to begin"
-        android:textColor="#757575"
-        android:textSize="16sp"
-        android:layout_marginTop="120dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_app_title" />
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingVertical="16dp"
+        android:background="#F5F5F5"
+        app:layout_constraintBottom_toBottomOf="parent">
 
-    <!-- Button Container (Chained Center) -->
+        <TextView
+            android:id="@+id/tv_copyright"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="© 2025 Asia Cargo Container Line, Inc."
+            android:textColor="#9E9E9E"
+            android:textSize="11sp" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btn_pack"
-        android:layout_width="0dp"
-        android:layout_height="72dp"
-        android:layout_marginTop="8dp"
-        android:text="Pack Mode"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:textAllCaps="false"
-        android:backgroundTint="#4CAF50"
-        app:cornerRadius="16dp"
-        app:icon="@drawable/ic_pack"
-        app:iconGravity="textStart"
-        app:iconPadding="16dp"
-        app:iconSize="28dp"
-        app:layout_constraintBottom_toTopOf="@+id/btn_return"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tv_subtitle"
-        app:layout_constraintVertical_chainStyle="packed" />
+        <TextView
+            android:id="@+id/tv_version"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="v0.0.0"
+            android:textColor="#BDBDBD"
+            android:textSize="12sp"
+            android:layout_marginTop="4dp" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btn_return"
-        android:layout_width="0dp"
-        android:layout_height="72dp"
-        android:layout_marginTop="16dp"
-        android:text="Return Mode"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:textAllCaps="false"
-        android:backgroundTint="#FF9800"
-        app:cornerRadius="16dp"
-        app:icon="@drawable/ic_return"
-        app:iconGravity="textStart"
-        app:iconPadding="16dp"
-        app:iconSize="28dp"
-        app:layout_constraintBottom_toTopOf="@+id/btn_continuous"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/btn_pack" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btn_continuous"
-        android:layout_width="0dp"
-        android:layout_height="72dp"
-        android:layout_marginTop="16dp"
-        android:text="Continuous"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:textAllCaps="false"
-        android:backgroundTint="#2196F3"
-        app:cornerRadius="16dp"
-        app:icon="@drawable/ic_continuous"
-        app:iconGravity="textStart"
-        app:iconPadding="16dp"
-        app:iconSize="28dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/btn_return" />
-
-    <!-- Version Footer -->
-    <TextView
-        android:id="@+id/tv_version"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="v2025.11.27"
-        android:textColor="#BDBDBD"
-        android:textSize="12sp"
-        android:layout_marginBottom="16dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <!-- Folder Button (Bottom Right) -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/btn_folder"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:src="@drawable/ic_folder"
-        android:contentDescription="Open Gallery"
-        app:backgroundTint="#FFFFFF"
-        app:tint="#555555"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

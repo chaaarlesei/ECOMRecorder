@@ -11,7 +11,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.util.Size
 import android.view.LayoutInflater
@@ -257,6 +256,8 @@ class FolderListActivity : AppCompatActivity() {
         inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val icon: ImageView = view.findViewById(R.id.iv_icon)
             val text: TextView = view.findViewById(R.id.tv_name)
+            val overlayDark: View = view.findViewById(R.id.overlay_dark)
+            val playIcon: ImageView = view.findViewById(R.id.iv_play_icon)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -271,9 +272,15 @@ class FolderListActivity : AppCompatActivity() {
             holder.text.setTextColor(Color.BLACK) // Set text color to Black
 
             if (file.isDirectory) {
+                // It's a folder - show folder icon, hide play overlay
                 holder.icon.setImageResource(R.drawable.ic_folder)
+                holder.overlayDark.visibility = View.GONE
+                holder.playIcon.visibility = View.GONE
             } else {
+                // It's a video file - load thumbnail and show play overlay
                 loadThumbnail(file, holder.icon)
+                holder.overlayDark.visibility = View.VISIBLE
+                holder.playIcon.visibility = View.VISIBLE
             }
 
             holder.itemView.setOnClickListener { onClick(file) }
