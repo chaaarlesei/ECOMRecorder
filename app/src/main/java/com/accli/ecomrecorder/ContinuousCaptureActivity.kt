@@ -154,6 +154,20 @@ class ContinuousCaptureActivity : AppCompatActivity() {
         cameraExecutor = Executors.newSingleThreadExecutor()
     }
 
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+
+        // User pressed Home button or switched apps while recording
+        if (recording != null) {
+            // Show toast warning
+            Toast.makeText(
+                this,
+                "⚠️ Recording will be discarded (not scanned)",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
     private fun startBlinking() {
         tvWarning.visibility = View.VISIBLE
         blinkingAnimator = ObjectAnimator.ofFloat(tvWarning, "alpha", 0f, 1f).apply {
@@ -240,10 +254,6 @@ class ContinuousCaptureActivity : AppCompatActivity() {
                     .addUseCase(videoCapture!!)
                     .addEffect(overlayEffect!!) // Add the overlay effect here
                     .build()
-
-                cameraProvider.bindToLifecycle(
-                    this, cameraSelector, useCaseGroup
-                )
 
                 try {
                     cameraProvider.unbindAll()
