@@ -3,8 +3,13 @@ package com.accli.ecomrecorder
 import android.Manifest
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
+import android.content.BroadcastReceiver
 import android.content.ContentValues
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
@@ -65,6 +70,15 @@ class ContinuousCaptureActivity : AppCompatActivity() {
     private lateinit var btnPause: ImageButton
     private var isPaused = false
 
+    // [ADDED] Receiver for scanner disconnection events
+    private val usbDisconnectReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (UsbManager.ACTION_USB_DEVICE_DETACHED == intent.action) {
+                handleUsbDisconnect()
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_continuous_capture)
@@ -94,7 +108,7 @@ class ContinuousCaptureActivity : AppCompatActivity() {
 
         btnCapture.setOnClickListener {
             if (recording != null) {
-                // STOP LOGIC (Existing confirmation)
+                // STOP LOGIC
                 AlertDialog.Builder(this)
                     .setTitle("Discard Recording?")
                     .setMessage("Stopping manually will discard the current video. Are you sure?")
@@ -105,15 +119,8 @@ class ContinuousCaptureActivity : AppCompatActivity() {
                     .setNegativeButton("Cancel", null)
                     .show()
             } else {
-                // START LOGIC (New confirmation with corrected grammar)
-                AlertDialog.Builder(this)
-                    .setTitle("Scanner Connected?")
-                    .setMessage("Please make sure the scanner is connected to this device; otherwise, the recording will not be saved.")
-                    .setPositiveButton("Start Recording") { _, _ ->
-                        startRecording()
-                    }
-                    .setNegativeButton("Cancel", null)
-                    .show()
+                // START LOGIC
+                startRecording()
             }
         }
 
@@ -151,7 +158,32 @@ class ContinuousCaptureActivity : AppCompatActivity() {
             )
         }
 
+        // [ADDED] Register the USB receiver
+        val filter = IntentFilter(UsbManager.ACTION_USB_DEVICE_DETACHED)
+        registerReceiver(usbDisconnectReceiver, filter)
+
         cameraExecutor = Executors.newSingleThreadExecutor()
+    }
+
+    // [ADDED] Handle USB disconnect logic
+    private fun handleUsbDisconnect() {
+        Toast.makeText(this, "Scanner disconnected! Stopping and exiting...", Toast.LENGTH_LONG).show()
+
+        // Disable restart logic to prevent loop
+        shouldRestartRecording = false
+
+        if (recording != null) {
+            // Ensure the file is discarded by NOT setting a pending filename
+            pendingFilename = null
+
+            // Stop recording. The Finalize listener will see 'pendingFilename' is null
+            // and trigger the logic to delete the file.
+            recording?.stop()
+            recording = null
+        }
+
+        // Force back to Main Activity
+        finish()
     }
 
     override fun onUserLeaveHint() {
@@ -472,6 +504,14 @@ class ContinuousCaptureActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+
+        // [ADDED] Unregister receiver
+        try {
+            unregisterReceiver(usbDisconnectReceiver)
+        } catch (e: Exception) {
+            // Ignore if not registered
+        }
+
         cameraExecutor.shutdown()
         recording?.stop()
         stopBlinking()

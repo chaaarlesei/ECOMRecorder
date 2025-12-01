@@ -35,6 +35,9 @@ class MainActivity : AppCompatActivity() {
     private var activeDialog: AlertDialog? = null
     private var currentFolder: String = "Ecom"
 
+    // Track scanner connection state
+    private var isScannerConnected: Boolean = false
+
     private val videoCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result: ActivityResult ->
@@ -170,8 +173,19 @@ class MainActivity : AppCompatActivity() {
         }
 
         cardContinuous.setOnClickListener {
-            val intent = Intent(this, ContinuousCaptureActivity::class.java)
-            startActivity(intent)
+            if (isScannerConnected) {
+                val intent = Intent(this, ContinuousCaptureActivity::class.java)
+                startActivity(intent)
+            } else {
+                // [MODIFIED] Show Modal Dialog instead of Toast
+                AlertDialog.Builder(this)
+                    .setTitle("Scanner Not Connected")
+                    .setMessage("Please connect a scanner to proceed to Continuous Mode.")
+                    .setPositiveButton("OK") { dialog, _ ->
+                        dialog.dismiss()
+                    }
+                    .show()
+            }
         }
 
         btnGallery.setOnClickListener {
@@ -194,14 +208,8 @@ class MainActivity : AppCompatActivity() {
         val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
         val deviceList = usbManager.deviceList
 
-        // Check if any USB device is connected
-        val hasUsbDevice = deviceList.isNotEmpty()
-
-        // Optionally: Check for specific barcode scanner vendors
-        // Common barcode scanner vendors: Honeywell, Zebra, etc.
+        // Check if ANY device is detected (General Mode for OTG)
         val isScannerConnected = deviceList.values.any { device ->
-            // You can add specific vendor IDs here if needed
-            // Example: device.vendorId == 0x0C2E (Honeywell)
             isLikelyBarcodeScanner(device)
         }
 
@@ -209,23 +217,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun isLikelyBarcodeScanner(device: UsbDevice): Boolean {
-        // Common barcode scanner vendor IDs
-        val scannerVendors = listOf(
-            0x0C2E,  // Honeywell
-            0x05E0,  // Symbol/Zebra
-            0x0536,  // Datalogic
-            0x1EAB,  // Zebra Technologies
-            0x0C27   // Code
-        )
-
-        // Check if it's a HID device (most barcode scanners are HID)
-        val isHID = device.deviceClass == 0 || device.deviceClass == 3
-
-        return scannerVendors.contains(device.vendorId) ||
-                (isHID && device.deviceName.contains("usb", ignoreCase = true))
+        // Accept ANY USB device as a scanner
+        return true
     }
 
     private fun updateScannerStatus(connected: Boolean) {
+        isScannerConnected = connected
+
         val indicator = findViewById<View>(R.id.scanner_status_indicator)
         val statusText = findViewById<TextView>(R.id.tv_scanner_status)
 
