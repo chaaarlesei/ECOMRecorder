@@ -24,6 +24,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.video.FallbackStrategy
 import androidx.camera.video.MediaStoreOutputOptions
 import androidx.camera.video.Quality
 import androidx.camera.video.QualitySelector
@@ -70,7 +71,7 @@ class ContinuousCaptureActivity : AppCompatActivity() {
     private lateinit var btnPause: ImageButton
     private var isPaused = false
 
-    // [ADDED] Receiver for scanner disconnection events
+    // Receiver for scanner disconnection events
     private val usbDisconnectReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (UsbManager.ACTION_USB_DEVICE_DETACHED == intent.action) {
@@ -158,14 +159,30 @@ class ContinuousCaptureActivity : AppCompatActivity() {
             )
         }
 
-        // [ADDED] Register the USB receiver
+        // Register the USB receiver to listen for disconnects while active
         val filter = IntentFilter(UsbManager.ACTION_USB_DEVICE_DETACHED)
         registerReceiver(usbDisconnectReceiver, filter)
 
         cameraExecutor = Executors.newSingleThreadExecutor()
     }
 
-    // [ADDED] Handle USB disconnect logic
+    override fun onResume() {
+        super.onResume()
+        // Check connection immediately on resume to "kick out" if scanner is missing
+        checkScannerConnection()
+    }
+
+    // Checks if any USB device is connected. If not, exits the activity.
+    private fun checkScannerConnection() {
+        val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
+        // If device list is empty, assume scanner is disconnected
+        if (usbManager.deviceList.isEmpty()) {
+            Toast.makeText(this, "Scanner not detected. Exiting...", Toast.LENGTH_SHORT).show()
+            finish()
+        }
+    }
+
+    // Handles the actual disconnect event (stops recording if needed, then exits)
     private fun handleUsbDisconnect() {
         Toast.makeText(this, "Scanner disconnected! Stopping and exiting...", Toast.LENGTH_LONG).show()
 
@@ -182,7 +199,7 @@ class ContinuousCaptureActivity : AppCompatActivity() {
             recording = null
         }
 
-        // Force back to Main Activity
+        // Force exit of the activity (Kick out)
         finish()
     }
 
@@ -194,7 +211,7 @@ class ContinuousCaptureActivity : AppCompatActivity() {
             // Show toast warning
             Toast.makeText(
                 this,
-                "⚠️ Recording will be discarded (not scanned)",
+                "Recording will be discarded (not scanned)",
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -227,8 +244,14 @@ class ContinuousCaptureActivity : AppCompatActivity() {
             }
 
             // 2. Setup Recorder & VideoCapture
+            // UPDATED: Set Quality to FHD with an explicit FallbackStrategy
             val recorder = Recorder.Builder()
-                .setQualitySelector(QualitySelector.from(Quality.HIGHEST))
+                .setQualitySelector(
+                    QualitySelector.from(
+                        Quality.FHD,
+                        FallbackStrategy.lowerQualityOrHigherThan(Quality.FHD)
+                    )
+                )
                 .build()
             videoCapture = VideoCapture.withOutput(recorder)
 
@@ -505,7 +528,7 @@ class ContinuousCaptureActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
 
-        // [ADDED] Unregister receiver
+        // Unregister receiver
         try {
             unregisterReceiver(usbDisconnectReceiver)
         } catch (e: Exception) {
