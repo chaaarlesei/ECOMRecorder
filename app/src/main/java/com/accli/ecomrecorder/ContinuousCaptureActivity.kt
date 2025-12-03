@@ -168,39 +168,17 @@ class ContinuousCaptureActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Check connection immediately on resume to "kick out" if scanner is missing
-        checkScannerConnection()
-    }
-
-    // Checks if any USB device is connected. If not, exits the activity.
-    private fun checkScannerConnection() {
+        // Just a toast if missing, since Main activity already warned the user
         val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
-        // If device list is empty, assume scanner is disconnected
         if (usbManager.deviceList.isEmpty()) {
-            Toast.makeText(this, "Scanner not detected. Exiting...", Toast.LENGTH_SHORT).show()
-            finish()
+            Toast.makeText(this, "Manual Mode (No Scanner)", Toast.LENGTH_SHORT).show()
         }
     }
 
-    // Handles the actual disconnect event (stops recording if needed, then exits)
+    // [MODIFIED] Handles disconnect: Shows toast but DOES NOT stop recording.
     private fun handleUsbDisconnect() {
-        Toast.makeText(this, "Scanner disconnected! Stopping and exiting...", Toast.LENGTH_LONG).show()
-
-        // Disable restart logic to prevent loop
-        shouldRestartRecording = false
-
-        if (recording != null) {
-            // Ensure the file is discarded by NOT setting a pending filename
-            pendingFilename = null
-
-            // Stop recording. The Finalize listener will see 'pendingFilename' is null
-            // and trigger the logic to delete the file.
-            recording?.stop()
-            recording = null
-        }
-
-        // Force exit of the activity (Kick out)
-        finish()
+        Toast.makeText(this, "Scanner disconnected! Recording continues...", Toast.LENGTH_LONG).show()
+        // Logic to stop recording is REMOVED intentionally.
     }
 
     override fun onUserLeaveHint() {
@@ -211,7 +189,7 @@ class ContinuousCaptureActivity : AppCompatActivity() {
             // Show toast warning
             Toast.makeText(
                 this,
-                "Recording will be discarded (not scanned)",
+                "⚠️ Recording will be discarded (not scanned)",
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -244,7 +222,6 @@ class ContinuousCaptureActivity : AppCompatActivity() {
             }
 
             // 2. Setup Recorder & VideoCapture
-            // UPDATED: Set Quality to FHD with an explicit FallbackStrategy
             val recorder = Recorder.Builder()
                 .setQualitySelector(
                     QualitySelector.from(
@@ -272,7 +249,7 @@ class ContinuousCaptureActivity : AppCompatActivity() {
                     // 2. Setup Paint (Smaller text size)
                     val textPaint = Paint().apply {
                         color = Color.WHITE
-                        textSize = 30f // Reduced size (was 60f)
+                        textSize = 30f
                         isAntiAlias = true
                         style = Paint.Style.FILL
                         setShadowLayer(4f, 0f, 0f, Color.BLACK) // Shadow for visibility
@@ -303,17 +280,15 @@ class ContinuousCaptureActivity : AppCompatActivity() {
                 cameraProvider.unbindAll()
 
                 // 4. Bind using UseCaseGroup to include the Effect
-                // We must use UseCaseGroup to attach the effect to the binding
                 val useCaseGroup = UseCaseGroup.Builder()
                     .addUseCase(preview)
                     .addUseCase(videoCapture!!)
-                    .addEffect(overlayEffect!!) // Add the overlay effect here
+                    .addEffect(overlayEffect!!)
                     .build()
 
                 try {
                     cameraProvider.unbindAll()
 
-                    // UPDATE THIS BLOCK: Assign the result to 'this.camera'
                     this.camera = cameraProvider.bindToLifecycle(
                         this, cameraSelector, useCaseGroup
                     )

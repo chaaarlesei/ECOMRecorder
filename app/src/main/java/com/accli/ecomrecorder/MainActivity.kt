@@ -172,18 +172,24 @@ class MainActivity : AppCompatActivity() {
             requestPermissionsAndPrompt("Return")
         }
 
+        // [MODIFIED] Continuous Mode with Scanner Warning Dialog
         cardContinuous.setOnClickListener {
             if (isScannerConnected) {
+                // Scanner connected - proceed directly
                 val intent = Intent(this, ContinuousCaptureActivity::class.java)
                 startActivity(intent)
             } else {
-                // [MODIFIED] Show Modal Dialog instead of Toast
+                // Scanner NOT connected - Show warning dialog with option to proceed
                 AlertDialog.Builder(this)
                     .setTitle("Scanner Not Connected")
-                    .setMessage("Please connect a scanner to proceed to Continuous Mode.")
-                    .setPositiveButton("OK") { dialog, _ ->
-                        dialog.dismiss()
+                    .setMessage("The barcode scanner is not detected. You can still use Continuous Mode manually, but automatic scanning will not work.\n\nDo you want to proceed?")
+                    .setPositiveButton("Proceed") { _, _ ->
+                        // User chose to proceed anyway
+                        val intent = Intent(this, ContinuousCaptureActivity::class.java)
+                        startActivity(intent)
                     }
+                    .setNegativeButton("Cancel", null)
+                    .setIcon(android.R.drawable.ic_dialog_alert)
                     .show()
             }
         }
