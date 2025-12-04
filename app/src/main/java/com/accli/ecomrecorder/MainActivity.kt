@@ -8,12 +8,13 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.ColorStateList
 import android.graphics.Color
-import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
 import android.view.View
 import android.widget.EditText
@@ -94,14 +95,40 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val usbReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            when (intent.action) {
-                UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
-                    updateScannerStatus(true)
+        override fun onReceive(context: Context, intent: Intent?) {
+            if (intent == null) return
+
+            try {
+                when (intent.action) {
+                    UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
+                        // Device connected - just update status
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            try {
+                                val usbManager = getSystemService(Context.USB_SERVICE) as? UsbManager
+                                val deviceList = usbManager?.deviceList
+                                val isConnected = deviceList?.isNotEmpty() == true
+                                updateScannerStatus(isConnected)
+                            } catch (e: Exception) {
+                                // Silently fail - don't crash
+                            }
+                        }, 500)
+                    }
+                    UsbManager.ACTION_USB_DEVICE_DETACHED -> {
+                        // Device disconnected - just update status
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            try {
+                                val usbManager = getSystemService(Context.USB_SERVICE) as? UsbManager
+                                val deviceList = usbManager?.deviceList
+                                val isConnected = deviceList?.isNotEmpty() == true
+                                updateScannerStatus(isConnected)
+                            } catch (e: Exception) {
+                                updateScannerStatus(false)
+                            }
+                        }, 500)
+                    }
                 }
-                UsbManager.ACTION_USB_DEVICE_DETACHED -> {
-                    updateScannerStatus(false)
-                }
+            } catch (e: Exception) {
+                // Catch any errors in the receiver itself to prevent crash
             }
         }
     }
@@ -136,16 +163,31 @@ class MainActivity : AppCompatActivity() {
         val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
         tvCopyright.text = "© $currentYear Asia Cargo Container Line, Inc."
 
-        // Register USB receiver
-        val filter = IntentFilter().apply {
-            addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
-            addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+        // Register USB receiver with error handling
+        try {
+            val filter = IntentFilter().apply {
+                addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
+                addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(usbReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("UnspecifiedRegisterReceiverFlag")
+                registerReceiver(usbReceiver, filter)
+            }
+        } catch (e: Exception) {
+            // Failed to register USB receiver - scanner status won't auto-update
+            Toast.makeText(this, "USB monitoring unavailable", Toast.LENGTH_SHORT).show()
         }
-        registerReceiver(usbReceiver, filter)
 
         // Register Battery receiver
-        val batteryFilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
-        registerReceiver(batteryReceiver, batteryFilter)
+        try {
+            val batteryFilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+            registerReceiver(batteryReceiver, batteryFilter)
+        } catch (e: Exception) {
+            // Failed to register battery receiver
+        }
 
         // Check initial USB scanner status
         checkInitialScannerStatus()
@@ -172,31 +214,41 @@ class MainActivity : AppCompatActivity() {
             requestPermissionsAndPrompt("Return")
         }
 
-        // [MODIFIED] Continuous Mode with Scanner Warning Dialog
+        // Continuous Mode - Always allow, just show tip if no scanner
         cardContinuous.setOnClickListener {
-            if (isScannerConnected) {
-                // Scanner connected - proceed directly
-                val intent = Intent(this, ContinuousCaptureActivity::class.java)
-                startActivity(intent)
-            } else {
-                // Scanner NOT connected - Show warning dialog with option to proceed
+            if (!isScannerConnected) {
+                // Show informational tip, but still allow access
                 AlertDialog.Builder(this)
-                    .setTitle("Scanner Not Connected")
-                    .setMessage("The barcode scanner is not detected. You can still use Continuous Mode manually, but automatic scanning will not work.\n\nDo you want to proceed?")
-                    .setPositiveButton("Proceed") { _, _ ->
-                        // User chose to proceed anyway
+                    .setTitle("Scanner Status")
+                    .setMessage("No barcode scanner detected. You can still use Continuous Mode with manual input.\n\nTip: Connect a USB barcode scanner for automatic scanning.")
+                    .setPositiveButton("Continue") { _, _ ->
                         val intent = Intent(this, ContinuousCaptureActivity::class.java)
                         startActivity(intent)
                     }
                     .setNegativeButton("Cancel", null)
-                    .setIcon(android.R.drawable.ic_dialog_alert)
+                    .setIcon(android.R.drawable.ic_dialog_info)
                     .show()
+            } else {
+                // Scanner connected - proceed directly
+                val intent = Intent(this, ContinuousCaptureActivity::class.java)
+                startActivity(intent)
             }
         }
 
         btnGallery.setOnClickListener {
             val intent = Intent(this, FolderListActivity::class.java)
             startActivity(intent)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Recheck scanner status when returning to activity
+        try {
+            checkInitialScannerStatus()
+        } catch (e: Exception) {
+            // If check fails, default to disconnected
+            updateScannerStatus(false)
         }
     }
 
@@ -211,20 +263,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkInitialScannerStatus() {
-        val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
-        val deviceList = usbManager.deviceList
+        try {
+            // Simple check: Any USB device connected = scanner connected
+            val usbManager = getSystemService(Context.USB_SERVICE) as? UsbManager
+            val deviceList = usbManager?.deviceList
 
-        // Check if ANY device is detected (General Mode for OTG)
-        val isScannerConnected = deviceList.values.any { device ->
-            isLikelyBarcodeScanner(device)
+            // If any USB device is connected, consider scanner connected
+            val isConnected = deviceList?.isNotEmpty() == true
+
+            updateScannerStatus(isConnected)
+        } catch (e: Exception) {
+            // If detection fails, default to disconnected
+            updateScannerStatus(false)
         }
-
-        updateScannerStatus(isScannerConnected)
-    }
-
-    private fun isLikelyBarcodeScanner(device: UsbDevice): Boolean {
-        // Accept ANY USB device as a scanner
-        return true
     }
 
     private fun updateScannerStatus(connected: Boolean) {
