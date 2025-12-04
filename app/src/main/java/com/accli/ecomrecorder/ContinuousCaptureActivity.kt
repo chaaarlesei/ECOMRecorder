@@ -16,6 +16,7 @@ import android.os.SystemClock
 import android.provider.MediaStore
 import android.util.Log
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.widget.Chronometer
 import android.widget.TextView
@@ -50,6 +51,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.camera.core.Camera
 import android.widget.ImageButton
 import androidx.activity.OnBackPressedCallback
+import androidx.camera.core.FocusMeteringAction
+import java.util.concurrent.TimeUnit
 
 class ContinuousCaptureActivity : AppCompatActivity() {
     private lateinit var viewFinder: androidx.camera.view.PreviewView
@@ -70,6 +73,7 @@ class ContinuousCaptureActivity : AppCompatActivity() {
     private var isTorchOn = false
     private lateinit var btnPause: ImageButton
     private var isPaused = false
+    private lateinit var focusRing: View
 
     // Receiver for scanner disconnection events
     private val usbDisconnectReceiver = object : BroadcastReceiver() {
@@ -89,6 +93,8 @@ class ContinuousCaptureActivity : AppCompatActivity() {
         chronometer = findViewById(R.id.chronometer)
         btnCapture = findViewById(R.id.btn_capture)
         btnFlash = findViewById(R.id.btn_flash)
+        focusRing = findViewById(R.id.focus_ring)
+
         btnFlash.setOnClickListener {
             toggleFlash()
         }
@@ -168,6 +174,7 @@ class ContinuousCaptureActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+
         // Just a toast if missing, since Main activity already warned the user
         val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
         if (usbManager.deviceList.isEmpty()) {
@@ -184,12 +191,17 @@ class ContinuousCaptureActivity : AppCompatActivity() {
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
 
-        // User pressed Home button or switched apps while recording
+        // User pressed Home button or switched apps while recording - DISCARD
         if (recording != null) {
-            // Show toast warning
+            // Stop and discard the recording
+            pendingFilename = null // Ensure it won't be saved
+            shouldRestartRecording = false
+            recording?.stop()
+            recording = null
+
             Toast.makeText(
                 this,
-                "⚠️ Recording will be discarded (not scanned)",
+                "⚠️ Recording discarded (left app)",
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -209,6 +221,60 @@ class ContinuousCaptureActivity : AppCompatActivity() {
         blinkingAnimator?.cancel()
         tvWarning.visibility = View.GONE
         tvWarning.alpha = 1f
+    }
+
+    private fun setupTapToFocus() {
+        viewFinder.setOnTouchListener { _, event ->
+            if (event.action == MotionEvent.ACTION_DOWN) {
+                val factory = viewFinder.meteringPointFactory
+                val point = factory.createPoint(event.x, event.y)
+
+                val action = FocusMeteringAction.Builder(point)
+                    .setAutoCancelDuration(3, TimeUnit.SECONDS) // Auto-cancel after 3 seconds
+                    .build()
+
+                camera?.cameraControl?.startFocusAndMetering(action)
+
+                // Show visual feedback
+                showFocusIndicator(event.x, event.y)
+
+                return@setOnTouchListener true
+            }
+            false
+        }
+    }
+
+    private fun showFocusIndicator(x: Float, y: Float) {
+        // Get the viewFinder's position on screen
+        val location = IntArray(2)
+        viewFinder.getLocationOnScreen(location)
+
+        // Calculate the actual touch position relative to the parent layout
+        val actualX = x + location[0]
+        val actualY = y + location[1]
+
+        focusRing.visibility = View.VISIBLE
+        // Center the ring on the touch point
+        focusRing.x = actualX - focusRing.width / 2
+        focusRing.y = actualY - focusRing.height / 2
+
+        // Reset scale and alpha before animating
+        focusRing.scaleX = 1f
+        focusRing.scaleY = 1f
+        focusRing.alpha = 1f
+
+        focusRing.animate()
+            .scaleX(1.2f)
+            .scaleY(1.2f)
+            .alpha(0f)
+            .setDuration(500)
+            .withEndAction {
+                focusRing.visibility = View.GONE
+                focusRing.scaleX = 1f
+                focusRing.scaleY = 1f
+                focusRing.alpha = 1f
+            }
+            .start()
     }
 
     private fun startCamera() {
@@ -292,6 +358,9 @@ class ContinuousCaptureActivity : AppCompatActivity() {
                     this.camera = cameraProvider.bindToLifecycle(
                         this, cameraSelector, useCaseGroup
                     )
+
+                    // Setup tap-to-focus
+                    setupTapToFocus()
 
                     // Optional: Reset flash state on camera start
                     isTorchOn = false
@@ -503,6 +572,14 @@ class ContinuousCaptureActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
 
+        // If there's still an active recording when destroying, discard it
+        if (recording != null) {
+            pendingFilename = null // Ensure it won't be saved
+            shouldRestartRecording = false
+            recording?.stop()
+            recording = null
+        }
+
         // Unregister receiver
         try {
             unregisterReceiver(usbDisconnectReceiver)
@@ -511,7 +588,6 @@ class ContinuousCaptureActivity : AppCompatActivity() {
         }
 
         cameraExecutor.shutdown()
-        recording?.stop()
         stopBlinking()
     }
 
