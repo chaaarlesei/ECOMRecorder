@@ -12,11 +12,55 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <LinearLayout
+        android:id="@+id/top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#80000000"
+        android:gravity="end|center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="8dp"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageButton
+            android:id="@+id/btn_settings"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Quality Settings"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_settings"
+            app:tint="#FFFFFF"
+            android:layout_marginEnd="8dp"/>
+
+        <ImageButton
+            android:id="@+id/btn_mute"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Mute Toggle"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_mic_off"
+            app:tint="#FFFFFF"
+            android:layout_marginEnd="8dp"/>
+
+        <ImageButton
+            android:id="@+id/btn_flash"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Flash Toggle"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_flash_off"
+            app:tint="#FFFFFF"/>
+    </LinearLayout>
+
     <TextView
         android:id="@+id/tv_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="16dp"
         android:background="#80000000"
         android:padding="8dp"
         android:text="Ready"
@@ -24,7 +68,7 @@
         android:textSize="16sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@id/top_bar" />
 
     <Chronometer
         android:id="@+id/chronometer"
@@ -75,19 +119,6 @@
         app:layout_constraintStart_toEndOf="@+id/btn_capture"
         app:layout_constraintTop_toTopOf="@+id/btn_capture" />
 
-    <ImageButton
-        android:id="@+id/btn_flash"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
-        android:layout_margin="24dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="Flash Toggle"
-        android:scaleType="fitCenter"
-        android:src="@drawable/ic_flash_off"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <!-- Focus Ring Indicator -->
     <View
         android:id="@+id/focus_ring"
         android:layout_width="80dp"
