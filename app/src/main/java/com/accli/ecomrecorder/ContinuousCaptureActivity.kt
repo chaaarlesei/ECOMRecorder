@@ -291,8 +291,8 @@ class ContinuousCaptureActivity : AppCompatActivity() {
             val recorder = Recorder.Builder()
                 .setQualitySelector(
                     QualitySelector.from(
-                        Quality.FHD,
-                        FallbackStrategy.lowerQualityOrHigherThan(Quality.FHD)
+                        Quality.HD,
+                        FallbackStrategy.lowerQualityOrHigherThan(Quality.HD)
                     )
                 )
                 .build()
