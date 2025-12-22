@@ -8,13 +8,10 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.ColorStateList
 import android.graphics.Color
-import android.hardware.usb.UsbManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.os.Handler
-import android.os.Looper
 import android.provider.MediaStore
 import android.view.View
 import android.widget.EditText
@@ -35,9 +32,6 @@ class MainActivity : AppCompatActivity() {
     private var activeFilenameEditText: EditText? = null
     private var activeDialog: AlertDialog? = null
     private var currentFolder: String = "Ecom"
-
-    // Track scanner connection state
-    private var isScannerConnected: Boolean = false
 
     private val videoCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -94,45 +88,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val usbReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent?) {
-            if (intent == null) return
-
-            try {
-                when (intent.action) {
-                    UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
-                        // Device connected - just update status
-                        Handler(Looper.getMainLooper()).postDelayed({
-                            try {
-                                val usbManager = getSystemService(Context.USB_SERVICE) as? UsbManager
-                                val deviceList = usbManager?.deviceList
-                                val isConnected = deviceList?.isNotEmpty() == true
-                                updateScannerStatus(isConnected)
-                            } catch (e: Exception) {
-                                // Silently fail - don't crash
-                            }
-                        }, 500)
-                    }
-                    UsbManager.ACTION_USB_DEVICE_DETACHED -> {
-                        // Device disconnected - just update status
-                        Handler(Looper.getMainLooper()).postDelayed({
-                            try {
-                                val usbManager = getSystemService(Context.USB_SERVICE) as? UsbManager
-                                val deviceList = usbManager?.deviceList
-                                val isConnected = deviceList?.isNotEmpty() == true
-                                updateScannerStatus(isConnected)
-                            } catch (e: Exception) {
-                                updateScannerStatus(false)
-                            }
-                        }, 500)
-                    }
-                }
-            } catch (e: Exception) {
-                // Catch any errors in the receiver itself to prevent crash
-            }
-        }
-    }
-
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val level = intent.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1)
@@ -163,24 +118,6 @@ class MainActivity : AppCompatActivity() {
         val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
         tvCopyright.text = "© $currentYear Asia Cargo Container Line, Inc."
 
-        // Register USB receiver with error handling
-        try {
-            val filter = IntentFilter().apply {
-                addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
-                addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                registerReceiver(usbReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-            } else {
-                @Suppress("UnspecifiedRegisterReceiverFlag")
-                registerReceiver(usbReceiver, filter)
-            }
-        } catch (e: Exception) {
-            // Failed to register USB receiver - scanner status won't auto-update
-            Toast.makeText(this, "USB monitoring unavailable", Toast.LENGTH_SHORT).show()
-        }
-
         // Register Battery receiver
         try {
             val batteryFilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
@@ -188,9 +125,6 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             // Failed to register battery receiver
         }
-
-        // Check initial USB scanner status
-        checkInitialScannerStatus()
 
         // Check initial battery status
         checkInitialBatteryStatus()
@@ -214,25 +148,17 @@ class MainActivity : AppCompatActivity() {
             requestPermissionsAndPrompt("Return")
         }
 
-        // Continuous Mode - Always allow, just show tip if no scanner
+        // Continuous Mode - Modal Dialog
         cardContinuous.setOnClickListener {
-            if (!isScannerConnected) {
-                // Show informational tip, but still allow access
-                AlertDialog.Builder(this)
-                    .setTitle("Scanner Status")
-                    .setMessage("No barcode scanner detected. You can still use Continuous Mode with manual input.\n\nTip: Connect a USB barcode scanner for automatic scanning.")
-                    .setPositiveButton("Continue") { _, _ ->
-                        val intent = Intent(this, ContinuousCaptureActivity::class.java)
-                        startActivity(intent)
-                    }
-                    .setNegativeButton("Cancel", null)
-                    .setIcon(android.R.drawable.ic_dialog_info)
-                    .show()
-            } else {
-                // Scanner connected - proceed directly
-                val intent = Intent(this, ContinuousCaptureActivity::class.java)
-                startActivity(intent)
-            }
+            AlertDialog.Builder(this)
+                .setTitle("Scanner Check")
+                .setMessage("Make sure the scanner is connected before proceeding.")
+                .setPositiveButton("Proceed") { _, _ ->
+                    val intent = Intent(this, ContinuousCaptureActivity::class.java)
+                    startActivity(intent)
+                }
+                .setNegativeButton("Back", null) // Dismisses dialog
+                .show()
         }
 
         btnGallery.setOnClickListener {
@@ -241,55 +167,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        // Recheck scanner status when returning to activity
-        try {
-            checkInitialScannerStatus()
-        } catch (e: Exception) {
-            // If check fails, default to disconnected
-            updateScannerStatus(false)
-        }
-    }
-
     override fun onDestroy() {
         super.onDestroy()
         try {
-            unregisterReceiver(usbReceiver)
             unregisterReceiver(batteryReceiver)
         } catch (e: Exception) {
             // Receiver not registered
-        }
-    }
-
-    private fun checkInitialScannerStatus() {
-        try {
-            // Simple check: Any USB device connected = scanner connected
-            val usbManager = getSystemService(Context.USB_SERVICE) as? UsbManager
-            val deviceList = usbManager?.deviceList
-
-            // If any USB device is connected, consider scanner connected
-            val isConnected = deviceList?.isNotEmpty() == true
-
-            updateScannerStatus(isConnected)
-        } catch (e: Exception) {
-            // If detection fails, default to disconnected
-            updateScannerStatus(false)
-        }
-    }
-
-    private fun updateScannerStatus(connected: Boolean) {
-        isScannerConnected = connected
-
-        val indicator = findViewById<View>(R.id.scanner_status_indicator)
-        val statusText = findViewById<TextView>(R.id.tv_scanner_status)
-
-        if (connected) {
-            indicator.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#4CAF50"))
-            statusText.text = "Scanner Connected"
-        } else {
-            indicator.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#F44336"))
-            statusText.text = "Scanner Disconnected"
         }
     }
 

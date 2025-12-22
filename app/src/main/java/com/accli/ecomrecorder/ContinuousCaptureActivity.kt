@@ -3,14 +3,10 @@ package com.accli.ecomrecorder
 import android.Manifest
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
-import android.content.BroadcastReceiver
 import android.content.ContentValues
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
-import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
@@ -88,14 +84,6 @@ class ContinuousCaptureActivity : AppCompatActivity() {
 
     // Persistence
     private lateinit var prefs: SharedPreferences
-
-    private val usbDisconnectReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            if (UsbManager.ACTION_USB_DEVICE_DETACHED == intent.action) {
-                handleUsbDisconnect()
-            }
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -181,15 +169,13 @@ class ContinuousCaptureActivity : AppCompatActivity() {
             )
         }
 
-        val filter = IntentFilter(UsbManager.ACTION_USB_DEVICE_DETACHED)
-        registerReceiver(usbDisconnectReceiver, filter)
-
         cameraExecutor = Executors.newSingleThreadExecutor()
     }
 
     // --- Quality Selection Logic ---
 
     private fun showQualityDialog() {
+        // We cannot change quality while recording
         if (recording != null) {
             Toast.makeText(this, "Cannot change quality while recording", Toast.LENGTH_SHORT).show()
             return
@@ -223,10 +209,10 @@ class ContinuousCaptureActivity : AppCompatActivity() {
 
                 val options = qualityMap.map { it.first }.toTypedArray()
 
-                // [FIXED LOGIC] Identify current Quality Object from preference
+                // Identify current Quality Object from preference
                 val currentQualityObj = getQualityFromPreference()
 
-                // Find index by exact object comparison (not string matching)
+                // Find index by exact object comparison
                 var selectedIndex = qualityMap.indexOfFirst { it.second == currentQualityObj }
 
                 // Fallback: If current preference is not supported by this camera (e.g. switched devices)
@@ -237,6 +223,7 @@ class ContinuousCaptureActivity : AppCompatActivity() {
                     .setSingleChoiceItems(options, selectedIndex) { dialog, which ->
                         val selected = qualityMap[which]
 
+                        // Extract short name for saving (e.g., "HD", "FHD", "UHD", "SD")
                         val shortName = when(selected.second) {
                             Quality.UHD -> "UHD"
                             Quality.FHD -> "FHD"
@@ -250,6 +237,7 @@ class ContinuousCaptureActivity : AppCompatActivity() {
 
                         Toast.makeText(this, "Quality set to ${selected.first}", Toast.LENGTH_SHORT).show()
 
+                        // Restart camera to apply
                         startCamera()
                         dialog.dismiss()
                     }
@@ -266,7 +254,7 @@ class ContinuousCaptureActivity : AppCompatActivity() {
         return when (currentQualityName) {
             "UHD" -> Quality.UHD
             "FHD" -> Quality.FHD
-            "HD" -> Quality.HD
+            "HD" -> Quality.HD // This corresponds to 720p
             "SD" -> Quality.SD
             else -> Quality.HD // Default to HD
         }
@@ -317,6 +305,7 @@ class ContinuousCaptureActivity : AppCompatActivity() {
             // Determine Quality based on Preference
             val preferredQuality = getQualityFromPreference()
 
+            // Build Recorder: Try preferred (HD), if not, try lower (SD), then higher (FHD)
             val recorder = Recorder.Builder()
                 .setQualitySelector(
                     QualitySelector.from(
@@ -512,10 +501,7 @@ class ContinuousCaptureActivity : AppCompatActivity() {
         ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
     }
 
-    private fun handleUsbDisconnect() {
-        Toast.makeText(this, "Scanner disconnected! Recording continues...", Toast.LENGTH_LONG).show()
-    }
-
+    // Callbacks and Overrides
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN) {
             val char = event.unicodeChar.toChar()
@@ -538,13 +524,6 @@ class ContinuousCaptureActivity : AppCompatActivity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        if ((getSystemService(Context.USB_SERVICE) as UsbManager).deviceList.isEmpty()) {
-            Toast.makeText(this, "Manual Mode (No Scanner)", Toast.LENGTH_SHORT).show()
-        }
-    }
-
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
         if (recording != null) {
@@ -564,11 +543,11 @@ class ContinuousCaptureActivity : AppCompatActivity() {
             recording?.stop()
             recording = null
         }
-        try { unregisterReceiver(usbDisconnectReceiver) } catch (_: Exception) {}
         cameraExecutor.shutdown()
         stopBlinking()
     }
 
+    // Blink Logic
     private fun startBlinking() {
         tvWarning.visibility = View.VISIBLE
         blinkingAnimator = ObjectAnimator.ofFloat(tvWarning, "alpha", 0f, 1f).apply {
@@ -585,6 +564,7 @@ class ContinuousCaptureActivity : AppCompatActivity() {
         tvWarning.alpha = 1f
     }
 
+    // Tap to focus
     private fun setupTapToFocus() {
         viewFinder.setOnTouchListener { _, event ->
             if (event.action == MotionEvent.ACTION_DOWN) {
