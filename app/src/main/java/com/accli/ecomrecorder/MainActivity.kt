@@ -35,6 +35,7 @@ class MainActivity : AppCompatActivity() {
     private var activeDialog: AlertDialog? = null
     private var currentFolder: String = "Ecom"
     private var currentCaptureType: CaptureType = CaptureType.VIDEO
+    private var shouldScanAfterPermission: Boolean = true
 
     private val singleVideoCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -44,7 +45,11 @@ class MainActivity : AppCompatActivity() {
         } else {
             Toast.makeText(this, "Recording cancelled", Toast.LENGTH_SHORT).show()
         }
-        startBarcodeScan()
+        if (currentFolder == "Pack" || currentFolder == "Return") {
+            promptForFilenameAndStart(currentFolder)
+        } else {
+            startBarcodeScan()
+        }
     }
 
     private val singleImageCaptureLauncher = registerForActivityResult(
@@ -93,7 +98,11 @@ class MainActivity : AppCompatActivity() {
             // Permission granted
             createAppFolders()
             // START THE SCAN
-            startBarcodeScan()
+            if (shouldScanAfterPermission) {
+                startBarcodeScan()
+            } else {
+                promptForFilenameAndStart(currentFolder)
+            }
         } else {
             val message = if (currentCaptureType == CaptureType.VIDEO) {
                 "Permissions required: Camera + Audio"
@@ -161,16 +170,19 @@ class MainActivity : AppCompatActivity() {
 
         cardPack.setOnClickListener {
             currentFolder = "Pack"
+            shouldScanAfterPermission = false
             requestPermissionsAndPrompt("Pack", CaptureType.VIDEO)
         }
 
         cardReturn.setOnClickListener {
             currentFolder = "Return"
+            shouldScanAfterPermission = false
             requestPermissionsAndPrompt("Return", CaptureType.VIDEO)
         }
 
         cardImage.setOnClickListener {
             currentFolder = "Image"
+            shouldScanAfterPermission = true
             requestPermissionsAndPrompt("Image", CaptureType.IMAGE)
         }
 
