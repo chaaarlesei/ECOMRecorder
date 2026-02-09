@@ -2,7 +2,6 @@ package com.accli.ecomrecorder
 
 import android.app.Activity
 import android.content.BroadcastReceiver
-import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -12,7 +11,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.provider.MediaStore
 import android.view.View
 import android.widget.EditText
 import android.widget.TextView
@@ -30,46 +28,29 @@ class MainActivity : AppCompatActivity() {
 
     private enum class CaptureType { VIDEO, IMAGE }
 
-    private var videoUri: Uri? = null
-    private var imageUri: Uri? = null
     private var activeFilenameEditText: EditText? = null
     private var activeDialog: AlertDialog? = null
     private var currentFolder: String = "Ecom"
     private var currentCaptureType: CaptureType = CaptureType.VIDEO
 
-    private val videoCaptureLauncher = registerForActivityResult(
+    private val singleVideoCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result: ActivityResult ->
         if (result.resultCode == Activity.RESULT_OK) {
             Toast.makeText(this, "Video saved", Toast.LENGTH_SHORT).show()
-            startBarcodeScan()
         } else {
-            videoUri?.let { uri ->
-                try {
-                    contentResolver.delete(uri, null, null)
-                } catch (_: Exception) {
-                }
-            }
-            videoUri = null
             Toast.makeText(this, "Recording cancelled", Toast.LENGTH_SHORT).show()
-            startBarcodeScan()
         }
+        startBarcodeScan()
     }
 
-    private val imageCaptureLauncher = registerForActivityResult(
+    private val singleImageCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result: ActivityResult ->
         if (result.resultCode == Activity.RESULT_OK) {
             Toast.makeText(this, "Image saved", Toast.LENGTH_SHORT).show()
             startBarcodeScan()
         } else {
-            imageUri?.let { uri ->
-                try {
-                    contentResolver.delete(uri, null, null)
-                } catch (_: Exception) {
-                }
-            }
-            imageUri = null
             Toast.makeText(this, "Capture cancelled", Toast.LENGTH_SHORT).show()
             startBarcodeScan()
         }
@@ -111,7 +92,12 @@ class MainActivity : AppCompatActivity() {
             // START THE SCAN
             startBarcodeScan()
         } else {
-            Toast.makeText(this, "Permissions required: Camera + Audio", Toast.LENGTH_LONG).show()
+            val message = if (currentCaptureType == CaptureType.VIDEO) {
+                "Permissions required: Camera + Audio"
+            } else {
+                "Permission required: Camera"
+            }
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
         }
     }
 
@@ -388,65 +374,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startVideoCaptureWithFilename(filename: String, folder: String) {
-        val relativePath = "DCIM/Ecom/$folder"
-
-        val values = ContentValues().apply {
-            put(MediaStore.Video.Media.DISPLAY_NAME, filename)
-            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-            put(MediaStore.Video.Media.RELATIVE_PATH, relativePath)
+        val intent = Intent(this, SingleCaptureActivity::class.java).apply {
+            putExtra(SingleCaptureActivity.EXTRA_FILENAME, filename)
+            putExtra(SingleCaptureActivity.EXTRA_FOLDER, folder)
         }
-
-        val resolver = contentResolver
-        try {
-            val uri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
-            if (uri == null) {
-                Toast.makeText(this, "Failed to create file", Toast.LENGTH_SHORT).show()
-                return
-            }
-            videoUri = uri
-
-            val intent = Intent(MediaStore.ACTION_VIDEO_CAPTURE).apply {
-                putExtra(MediaStore.EXTRA_OUTPUT, uri)
-            }
-
-            videoCaptureLauncher.launch(intent)
-
-        } catch (e: Exception) {
-            Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
-        }
+        singleVideoCaptureLauncher.launch(intent)
     }
 
     private fun startImageCaptureWithFilename(filename: String, folder: String) {
-        val relativePath = "DCIM/Ecom/$folder"
-        val finalName = if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) {
-            filename
-        } else {
-            "$filename.jpg"
+        val intent = Intent(this, SingleImageCaptureActivity::class.java).apply {
+            putExtra(SingleImageCaptureActivity.EXTRA_FILENAME, filename)
+            putExtra(SingleImageCaptureActivity.EXTRA_FOLDER, folder)
         }
-
-        val values = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, finalName)
-            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-            put(MediaStore.Images.Media.RELATIVE_PATH, relativePath)
-        }
-
-        val resolver = contentResolver
-        try {
-            val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-            if (uri == null) {
-                Toast.makeText(this, "Failed to create file", Toast.LENGTH_SHORT).show()
-                return
-            }
-            imageUri = uri
-
-            val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
-                putExtra(MediaStore.EXTRA_OUTPUT, uri)
-            }
-
-            imageCaptureLauncher.launch(intent)
-
-        } catch (e: Exception) {
-            Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
-        }
+        singleImageCaptureLauncher.launch(intent)
     }
 }

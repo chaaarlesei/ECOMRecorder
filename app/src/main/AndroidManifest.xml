@@ -61,6 +61,23 @@
             android:exported="false" />
 
         <activity
+            android:name=".SingleCaptureActivity"
+            android:screenOrientation="portrait"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|uiMode"
+            android:exported="false" />
+
+        <activity
+            android:name=".SingleImageCaptureActivity"
+            android:screenOrientation="portrait"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|uiMode"
+            android:exported="false" />
+
+        <activity
+            android:name=".ImagePreviewActivity"
+            android:screenOrientation="portrait"
+            android:exported="false" />
+
+        <activity
             android:name=".FolderListActivity"
             android:screenOrientation="portrait"
             android:label="Recordings"
