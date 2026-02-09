@@ -521,7 +521,7 @@
         android:gravity="center"
         android:paddingVertical="16dp"
         android:background="#F5F5F5"
-        app:layout_constraintBottom_toBottomOf="parent">
+        app:layout_constraintBottom_toTopOf="@+id/ad_view">
 
         <TextView
             android:id="@+id/tv_copyright"
@@ -541,5 +541,15 @@
             android:layout_marginTop="4dp" />
 
     </LinearLayout>
+
+    <com.google.android.gms.ads.AdView
+        android:id="@+id/ad_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:adSize="BANNER"
+        app:adUnitId="ca-app-pub-4590991274109372/1908974159"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

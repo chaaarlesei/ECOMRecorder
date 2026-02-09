@@ -19,6 +19,9 @@ import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.MobileAds
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.google.zxing.integration.android.IntentIntegrator
@@ -119,6 +122,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
         setContentView(R.layout.activity_main)
+
+        MobileAds.initialize(this)
+        val adView = findViewById<AdView>(R.id.ad_view)
+        adView.loadAd(AdRequest.Builder().build())
 
         createAppFolders()
 

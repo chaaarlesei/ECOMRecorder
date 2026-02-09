@@ -75,4 +75,6 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     implementation(libs.androidx.camera.effects)
+    implementation("com.google.android.gms:play-services-ads:24.9.0")
+    implementation("com.google.guava:guava:32.1.3-android")
 }
