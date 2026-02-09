@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">ECOM Recorder</string>
     <string name="type_instead"><u>Type Instead</u></string>
+    <string name="scan">Scan</string>
     <string name="admob_banner_id">ca-app-pub-4590991274109372/1908974159</string>
     <string name="admob_app_id">ca-app-pub-4590991274109372~7328821791</string>
 </resources>

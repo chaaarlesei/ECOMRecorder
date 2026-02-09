@@ -30,6 +30,9 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.Executors
 
 class FolderListActivity : AppCompatActivity() {
@@ -317,6 +320,7 @@ class FolderListActivity : AppCompatActivity() {
         inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val icon: ImageView = view.findViewById(R.id.iv_icon)
             val text: TextView = view.findViewById(R.id.tv_name)
+            val date: TextView = view.findViewById(R.id.tv_date)
             val overlayDark: View = view.findViewById(R.id.overlay_dark)
             val playIcon: ImageView = view.findViewById(R.id.iv_play_icon)
         }
@@ -337,7 +341,10 @@ class FolderListActivity : AppCompatActivity() {
                 holder.icon.setImageResource(R.drawable.ic_folder)
                 holder.overlayDark.visibility = View.GONE
                 holder.playIcon.visibility = View.GONE
+                holder.date.visibility = View.GONE
             } else {
+                holder.date.visibility = View.VISIBLE
+                holder.date.text = formatFileDate(file.lastModified())
                 if (isVideoFile(file)) {
                     // It's a video file - load thumbnail and show play overlay
                     loadThumbnail(file, holder.icon, true)
@@ -370,5 +377,10 @@ class FolderListActivity : AppCompatActivity() {
         return file.name.endsWith(".jpg", ignoreCase = true) ||
                 file.name.endsWith(".jpeg", ignoreCase = true) ||
                 file.name.endsWith(".png", ignoreCase = true)
+    }
+
+    private fun formatFileDate(timestamp: Long): String {
+        val formatter = SimpleDateFormat("MMM dd, yyyy h:mm a", Locale.US)
+        return formatter.format(Date(timestamp))
     }
 }

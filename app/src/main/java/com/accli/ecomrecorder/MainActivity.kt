@@ -36,6 +36,7 @@ class MainActivity : AppCompatActivity() {
     private var currentFolder: String = "Ecom"
     private var currentCaptureType: CaptureType = CaptureType.VIDEO
     private var shouldScanAfterPermission: Boolean = true
+    private var scanForAutofill: Boolean = false
 
     private val singleVideoCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -57,16 +58,29 @@ class MainActivity : AppCompatActivity() {
     ) { result: ActivityResult ->
         if (result.resultCode == Activity.RESULT_OK) {
             Toast.makeText(this, "Image saved", Toast.LENGTH_SHORT).show()
-            startBarcodeScan()
+            promptForFilenameAndStart(currentFolder)
         } else {
             Toast.makeText(this, "Capture cancelled", Toast.LENGTH_SHORT).show()
-            startBarcodeScan()
+            promptForFilenameAndStart(currentFolder)
         }
     }
 
     private val barcodeScanLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result: ActivityResult ->
+        if (scanForAutofill) {
+            scanForAutofill = false
+            if (result.resultCode == Activity.RESULT_OK) {
+                val scanResult = result.data?.getStringExtra("SCAN_RESULT")
+                if (scanResult != null) {
+                    val edit = activeFilenameEditText
+                    edit?.setText(scanResult)
+                    edit?.setSelection(scanResult.length)
+                }
+            }
+            return@registerForActivityResult
+        }
+
         if (result.resultCode == RESULT_FIRST_USER) {
             promptForFilenameAndStart(currentFolder)
             return@registerForActivityResult
@@ -182,7 +196,7 @@ class MainActivity : AppCompatActivity() {
 
         cardImage.setOnClickListener {
             currentFolder = "Image"
-            shouldScanAfterPermission = true
+            shouldScanAfterPermission = false
             requestPermissionsAndPrompt("Image", CaptureType.IMAGE)
         }
 
@@ -340,13 +354,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun promptForFilenameAndStart(folder: String) {
-        val edit = EditText(this)
-        edit.hint = "Tracking Number (e.g. JT0123456789)"
+        val view = layoutInflater.inflate(R.layout.dialog_filename_input, null)
+        val edit = view.findViewById<EditText>(R.id.et_filename)
+        val scanButton = view.findViewById<View>(R.id.btn_scan_inline)
         activeFilenameEditText = edit
 
         val builder = AlertDialog.Builder(this)
             .setTitle("Enter filename")
-            .setView(edit)
+            .setView(view)
             .setPositiveButton("Record") { _, _ ->
                 var name = edit.text.toString().trim()
                 if (name.isEmpty()) {
@@ -364,6 +379,11 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("Cancel") { dialog, _ ->
                 dialog.dismiss()
             }
+
+        scanButton.setOnClickListener {
+            scanForAutofill = true
+            startBarcodeScan()
+        }
 
         activeDialog = builder.show()
     }
