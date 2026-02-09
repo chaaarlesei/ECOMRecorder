@@ -28,10 +28,14 @@ import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
+    private enum class CaptureType { VIDEO, IMAGE }
+
     private var videoUri: Uri? = null
+    private var imageUri: Uri? = null
     private var activeFilenameEditText: EditText? = null
     private var activeDialog: AlertDialog? = null
     private var currentFolder: String = "Ecom"
+    private var currentCaptureType: CaptureType = CaptureType.VIDEO
 
     private val videoCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -52,6 +56,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val imageCaptureLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result: ActivityResult ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            Toast.makeText(this, "Image saved", Toast.LENGTH_SHORT).show()
+            startBarcodeScan()
+        } else {
+            imageUri?.let { uri ->
+                try {
+                    contentResolver.delete(uri, null, null)
+                } catch (_: Exception) {
+                }
+            }
+            imageUri = null
+            Toast.makeText(this, "Capture cancelled", Toast.LENGTH_SHORT).show()
+            startBarcodeScan()
+        }
+    }
+
     private val barcodeScanLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result: ActivityResult ->
@@ -66,7 +89,7 @@ class MainActivity : AppCompatActivity() {
                 val scanned = scanResult
                 Toast.makeText(this, "Scanned: $scanned", Toast.LENGTH_LONG).show()
                 val sanitized = sanitizeFilename(scanned)
-                startVideoCaptureWithFilename(sanitized, currentFolder)
+                startCaptureWithFilename(sanitized, currentFolder)
             }
         }
     }
@@ -76,7 +99,11 @@ class MainActivity : AppCompatActivity() {
     ) { perms ->
         // Check core permissions (Camera & Audio are mandatory)
         val cameraGranted = perms[android.Manifest.permission.CAMERA] ?: false
-        val audioGranted = perms[android.Manifest.permission.RECORD_AUDIO] ?: false
+        val audioGranted = if (currentCaptureType == CaptureType.VIDEO) {
+            perms[android.Manifest.permission.RECORD_AUDIO] ?: false
+        } else {
+            true
+        }
 
         if (cameraGranted && audioGranted) {
             // Permission granted
@@ -136,16 +163,22 @@ class MainActivity : AppCompatActivity() {
         val cardPack = findViewById<MaterialCardView>(R.id.card_pack)
         val cardReturn = findViewById<MaterialCardView>(R.id.card_return)
         val cardContinuous = findViewById<MaterialCardView>(R.id.card_continuous)
+        val cardImage = findViewById<MaterialCardView>(R.id.card_image)
         val btnGallery = findViewById<MaterialButton>(R.id.btn_gallery)
 
         cardPack.setOnClickListener {
             currentFolder = "Pack"
-            requestPermissionsAndPrompt("Pack")
+            requestPermissionsAndPrompt("Pack", CaptureType.VIDEO)
         }
 
         cardReturn.setOnClickListener {
             currentFolder = "Return"
-            requestPermissionsAndPrompt("Return")
+            requestPermissionsAndPrompt("Return", CaptureType.VIDEO)
+        }
+
+        cardImage.setOnClickListener {
+            currentFolder = "Image"
+            requestPermissionsAndPrompt("Image", CaptureType.IMAGE)
         }
 
         // Continuous Mode - Modal Dialog
@@ -267,16 +300,21 @@ class MainActivity : AppCompatActivity() {
             File(ecom, "Pack").mkdirs()
             File(ecom, "Return").mkdirs()
             File(ecom, "Continuous").mkdirs()
+            File(ecom, "Image").mkdirs()
         } catch (e: Exception) {
             // Ignore errors
         }
     }
 
-    private fun requestPermissionsAndPrompt(folder: String) {
+    private fun requestPermissionsAndPrompt(folder: String, captureType: CaptureType) {
+        currentCaptureType = captureType
         val permissions = mutableListOf(
-            android.Manifest.permission.CAMERA,
-            android.Manifest.permission.RECORD_AUDIO
+            android.Manifest.permission.CAMERA
         )
+
+        if (captureType == CaptureType.VIDEO) {
+            permissions.add(android.Manifest.permission.RECORD_AUDIO)
+        }
 
         // Add storage permissions correctly based on Android Version
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
@@ -311,9 +349,12 @@ class MainActivity : AppCompatActivity() {
                     return@setPositiveButton
                 }
                 val sanitized = sanitizeFilename(name)
-                if (!sanitized.endsWith(".mp4")) name = "$sanitized.mp4"
+                val finalName = when (currentCaptureType) {
+                    CaptureType.VIDEO -> if (sanitized.endsWith(".mp4")) sanitized else "$sanitized.mp4"
+                    CaptureType.IMAGE -> if (sanitized.endsWith(".jpg") || sanitized.endsWith(".jpeg")) sanitized else "$sanitized.jpg"
+                }
 
-                startVideoCaptureWithFilename(name, folder)
+                startCaptureWithFilename(finalName, folder)
             }
             .setNegativeButton("Cancel") { dialog, _ ->
                 dialog.dismiss()
@@ -339,6 +380,13 @@ class MainActivity : AppCompatActivity() {
         return name.replace(Regex("[^a-zA-Z0-9._-]"), "_")
     }
 
+    private fun startCaptureWithFilename(filename: String, folder: String) {
+        when (currentCaptureType) {
+            CaptureType.VIDEO -> startVideoCaptureWithFilename(filename, folder)
+            CaptureType.IMAGE -> startImageCaptureWithFilename(filename, folder)
+        }
+    }
+
     private fun startVideoCaptureWithFilename(filename: String, folder: String) {
         val relativePath = "DCIM/Ecom/$folder"
 
@@ -362,6 +410,40 @@ class MainActivity : AppCompatActivity() {
             }
 
             videoCaptureLauncher.launch(intent)
+
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun startImageCaptureWithFilename(filename: String, folder: String) {
+        val relativePath = "DCIM/Ecom/$folder"
+        val finalName = if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) {
+            filename
+        } else {
+            "$filename.jpg"
+        }
+
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, finalName)
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            put(MediaStore.Images.Media.RELATIVE_PATH, relativePath)
+        }
+
+        val resolver = contentResolver
+        try {
+            val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+            if (uri == null) {
+                Toast.makeText(this, "Failed to create file", Toast.LENGTH_SHORT).show()
+                return
+            }
+            imageUri = uri
+
+            val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+                putExtra(MediaStore.EXTRA_OUTPUT, uri)
+            }
+
+            imageCaptureLauncher.launch(intent)
 
         } catch (e: Exception) {
             Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()

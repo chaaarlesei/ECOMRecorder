@@ -44,9 +44,17 @@ class FolderListActivity : AppCompatActivity() {
     private val thumbnailExecutor = Executors.newFixedThreadPool(4)
 
     private val permissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { perms ->
+        val granted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val videoGranted = perms[Manifest.permission.READ_MEDIA_VIDEO] ?: false
+            val imageGranted = perms[Manifest.permission.READ_MEDIA_IMAGES] ?: false
+            videoGranted || imageGranted
+        } else {
+            perms[Manifest.permission.READ_EXTERNAL_STORAGE] ?: false
+        }
+
+        if (granted) {
             loadFilesAndFolders(rootDirectory)
         } else {
             Toast.makeText(this, "Permission denied. Cannot list files.", Toast.LENGTH_SHORT).show()
@@ -116,16 +124,33 @@ class FolderListActivity : AppCompatActivity() {
     }
 
     private fun checkPermissionAndLoad() {
-        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            Manifest.permission.READ_MEDIA_VIDEO
-        } else {
-            Manifest.permission.READ_EXTERNAL_STORAGE
-        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val videoGranted = ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_MEDIA_VIDEO
+            ) == PackageManager.PERMISSION_GRANTED
+            val imageGranted = ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_MEDIA_IMAGES
+            ) == PackageManager.PERMISSION_GRANTED
 
-        if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
-            loadFilesAndFolders(currentDirectory)
+            if (videoGranted || imageGranted) {
+                loadFilesAndFolders(currentDirectory)
+            } else {
+                permissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.READ_MEDIA_VIDEO,
+                        Manifest.permission.READ_MEDIA_IMAGES
+                    )
+                )
+            }
         } else {
-            permissionLauncher.launch(permission)
+            val permission = Manifest.permission.READ_EXTERNAL_STORAGE
+            if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
+                loadFilesAndFolders(currentDirectory)
+            } else {
+                permissionLauncher.launch(arrayOf(permission))
+            }
         }
     }
 
@@ -137,7 +162,7 @@ class FolderListActivity : AppCompatActivity() {
         currentDirectory = directory
 
         // Update Title
-        supportActionBar?.title = if (directory == rootDirectory) "Recorded Videos" else directory?.name ?: "Unknown"
+        supportActionBar?.title = if (directory == rootDirectory) "Recorded Media" else directory?.name ?: "Unknown"
 
         fileList.clear()
 
@@ -150,14 +175,14 @@ class FolderListActivity : AppCompatActivity() {
                 fileList.addAll(subDirs.sortedBy { it.name })
             }
 
-            // 2. Get video files (excluding hidden ones)
-            val videos = directory.listFiles { file ->
+            // 2. Get media files (excluding hidden ones)
+            val mediaFiles = directory.listFiles { file ->
                 file.isFile &&
                         !file.name.startsWith(".") &&
-                        (file.name.endsWith(".mp4", ignoreCase = true))
+                        (isVideoFile(file) || isImageFile(file))
             }
-            if (videos != null) {
-                fileList.addAll(videos.sortedByDescending { it.lastModified() })
+            if (mediaFiles != null) {
+                fileList.addAll(mediaFiles.sortedByDescending { it.lastModified() })
             }
         }
 
@@ -176,8 +201,14 @@ class FolderListActivity : AppCompatActivity() {
             // NAVIGATE INTO FOLDER (Internal)
             loadFilesAndFolders(file)
         } else {
-            // OPEN VIDEO (External Player)
-            playVideo(file)
+            // OPEN MEDIA (External Viewer)
+            if (isVideoFile(file)) {
+                playVideo(file)
+            } else if (isImageFile(file)) {
+                viewImage(file)
+            } else {
+                Toast.makeText(this, "Unsupported file type", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -187,7 +218,7 @@ class FolderListActivity : AppCompatActivity() {
             val authority = "${packageName}.provider"
 
             // 1. Try MediaStore Content URI (Best for Players)
-            var contentUri = getMediaUriFromFile(file)
+            var contentUri = getMediaUriFromFile(file, true)
 
             // 2. Fallback to FileProvider
             if (contentUri == null) {
@@ -203,35 +234,65 @@ class FolderListActivity : AppCompatActivity() {
         }
     }
 
-    private fun getMediaUriFromFile(file: File): Uri? {
-        val projection = arrayOf(MediaStore.Video.Media._ID)
-        val selection = "${MediaStore.Video.Media.DATA} = ?"
+    private fun viewImage(file: File) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW)
+            val authority = "${packageName}.provider"
+
+            // 1. Try MediaStore Content URI
+            var contentUri = getMediaUriFromFile(file, false)
+
+            // 2. Fallback to FileProvider
+            if (contentUri == null) {
+                contentUri = FileProvider.getUriForFile(this, authority, file)
+            }
+
+            intent.setDataAndType(contentUri, "image/*")
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Cannot open image: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun getMediaUriFromFile(file: File, isVideo: Boolean): Uri? {
+        val projection = arrayOf(MediaStore.MediaColumns._ID)
+        val selection = "${MediaStore.MediaColumns.DATA} = ?"
         val selectionArgs = arrayOf(file.absolutePath)
+        val contentUri = if (isVideo) {
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        } else {
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        }
 
         contentResolver.query(
-            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+            contentUri,
             projection,
             selection,
             selectionArgs,
             null
         )?.use { cursor ->
             if (cursor.moveToFirst()) {
-                val id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID))
-                return ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
+                val id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID))
+                return ContentUris.withAppendedId(contentUri, id)
             }
         }
         return null
     }
 
-    private fun loadThumbnail(file: File, imageView: ImageView) {
-        // Set default system play icon
-        imageView.setImageResource(android.R.drawable.ic_media_play)
+    private fun loadThumbnail(file: File, imageView: ImageView, isVideo: Boolean) {
+        if (isVideo) {
+            imageView.setImageResource(android.R.drawable.ic_media_play)
+        } else {
+            imageView.setImageResource(android.R.drawable.ic_menu_gallery)
+        }
 
         thumbnailExecutor.execute {
             var bitmap: Bitmap? = null
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 try {
-                    val uri = getMediaUriFromFile(file)
+                    val uri = getMediaUriFromFile(file, isVideo)
                     if (uri != null) {
                         bitmap = contentResolver.loadThumbnail(uri, Size(128, 128), null)
                     }
@@ -277,10 +338,17 @@ class FolderListActivity : AppCompatActivity() {
                 holder.overlayDark.visibility = View.GONE
                 holder.playIcon.visibility = View.GONE
             } else {
-                // It's a video file - load thumbnail and show play overlay
-                loadThumbnail(file, holder.icon)
-                holder.overlayDark.visibility = View.VISIBLE
-                holder.playIcon.visibility = View.VISIBLE
+                if (isVideoFile(file)) {
+                    // It's a video file - load thumbnail and show play overlay
+                    loadThumbnail(file, holder.icon, true)
+                    holder.overlayDark.visibility = View.VISIBLE
+                    holder.playIcon.visibility = View.VISIBLE
+                } else {
+                    // It's an image file - load thumbnail without overlay
+                    loadThumbnail(file, holder.icon, false)
+                    holder.overlayDark.visibility = View.GONE
+                    holder.playIcon.visibility = View.GONE
+                }
             }
 
             holder.itemView.setOnClickListener { onClick(file) }
@@ -292,5 +360,15 @@ class FolderListActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         thumbnailExecutor.shutdown()
+    }
+
+    private fun isVideoFile(file: File): Boolean {
+        return file.name.endsWith(".mp4", ignoreCase = true)
+    }
+
+    private fun isImageFile(file: File): Boolean {
+        return file.name.endsWith(".jpg", ignoreCase = true) ||
+                file.name.endsWith(".jpeg", ignoreCase = true) ||
+                file.name.endsWith(".png", ignoreCase = true)
     }
 }
